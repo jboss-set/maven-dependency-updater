@@ -1,0 +1,8 @@
+{
+  "bom-coordinates": "test:test:0.1",
+  "streams": {
+    "org.wildfly:wildfly-messaging": "MINOR",
+    "org.picketlink:*": "QUALIFIER",
+    "*:*": "MICRO"
+  }
+}

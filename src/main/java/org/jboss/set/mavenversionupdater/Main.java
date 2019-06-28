@@ -1,154 +1,90 @@
 package org.jboss.set.mavenversionupdater;
 
-import static org.jboss.set.mavenversionupdater.VersionComparison.ComparisonLevel.MINOR;
-
 import java.io.File;
-import java.nio.file.Files;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
 
-import org.apache.maven.repository.internal.DefaultArtifactDescriptorReader;
-import org.apache.maven.repository.internal.DefaultVersionRangeResolver;
-import org.apache.maven.repository.internal.DefaultVersionResolver;
-import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
-import org.apache.maven.repository.internal.SnapshotMetadataGeneratorFactory;
-import org.apache.maven.repository.internal.VersionsMetadataGeneratorFactory;
-import org.eclipse.aether.DefaultRepositorySystemSession;
-import org.eclipse.aether.RepositorySystem;
-import org.eclipse.aether.artifact.Artifact;
-import org.eclipse.aether.artifact.DefaultArtifact;
-import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory;
-import org.eclipse.aether.impl.ArtifactDescriptorReader;
-import org.eclipse.aether.impl.DefaultServiceLocator;
-import org.eclipse.aether.impl.MetadataGeneratorFactory;
-import org.eclipse.aether.impl.VersionRangeResolver;
-import org.eclipse.aether.impl.VersionResolver;
-import org.eclipse.aether.repository.LocalRepository;
-import org.eclipse.aether.repository.RemoteRepository;
-import org.eclipse.aether.resolution.VersionRangeRequest;
-import org.eclipse.aether.resolution.VersionRangeResolutionException;
-import org.eclipse.aether.resolution.VersionRangeResult;
-import org.eclipse.aether.spi.connector.RepositoryConnectorFactory;
-import org.eclipse.aether.spi.connector.transport.TransporterFactory;
-import org.eclipse.aether.transport.http.HttpTransporterFactory;
-import org.eclipse.aether.version.Version;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.jboss.logging.Logger;
 
 public class Main {
 
     private static final Logger LOG = Logger.getLogger(Main.class);
 
-    public static void main(String[] args) throws Exception {
-        RepositorySystem system = newRepositorySystem();
-        DefaultRepositorySystemSession session = newRepositorySystemSession(system);
+    private File dependenciesFile;
+    private File configurationFile;
+    private File bomFile;
 
-        File dependenciesFile;
-        if (args.length == 1) {
-            dependenciesFile = new File(args[0]);
-        } else {
-            dependenciesFile = new File("/home/thofman/Projects/wildfly/dependencies.txt");
-        }
-        List<String> dependencies = Files.readAllLines(dependenciesFile.toPath());
-
-        for (String gav: dependencies) {
-            Artifact artifact = newArtifact(gav);
-            Artifact rangeArtifact = newVersionRangeArtifact(gav);
-
-            if (artifact.getBaseVersion().startsWith("$")) {
-                LOG.infof("Skipping %s", artifact);
-                continue;
-            }
-            try {
-                VersionRangeRequest rangeRequest = new VersionRangeRequest();
-                rangeRequest.setArtifact(rangeArtifact);
-                rangeRequest.setRepositories(newRepositories());
-
-                VersionRangeResult rangeResult = system.resolveVersionRange(session, rangeRequest);
-
-                List<Version> versions = rangeResult.getVersions();
-                Optional<Version> latest = VersionComparison.findLatest(MINOR, artifact.getBaseVersion(), versions);
-
-                System.out.println(String.format("Available versions for %s: %s", gav, versions));
-                if (latest.isPresent()) {
-                    if (artifact.getBaseVersion().equals(latest.get().toString())) {
-                        System.out.println("  => no change");
-                    } else {
-                        System.out.println(String.format("  => %s", latest.get().toString()));
-                    }
-                } else {
-                    System.out.println("  => no upgrade possible");
-                }
-            } catch (VersionRangeResolutionException e) {
-                LOG.errorf("Could not resolve %s", rangeArtifact.toString());
-            }
+    public static void main(String[] args) {
+        try {
+            System.exit(new Main().run(args));
+        } catch (Exception e) {
+            LOG.error(e);
+            System.exit(1);
         }
     }
 
-    private static Artifact newArtifact(String gav) {
-        String[] split = gav.split(":");
-        if (split.length != 3) {
-            throw new RuntimeException("Invalid GAV: " + gav);
+    private int run(String[] args) throws Exception {
+        Options options = new Options();
+        options.addOption(Option.builder("h").longOpt("help").desc("Print help").build());
+        options.addOption(Option.builder("d")
+                .longOpt("dependencies")
+                .required()
+                .hasArgs()
+                .numberOfArgs(1)
+                .desc("Dependencies file (in GAV per line format)")
+                .build());
+        options.addOption(Option.builder("c")
+                .longOpt("config")
+                .required()
+                .hasArgs()
+                .numberOfArgs(1)
+                .desc("Configuration JSON file")
+                .build());
+        options.addOption(Option.builder("o")
+                .longOpt("output")
+                .required()
+                .hasArgs()
+                .numberOfArgs(1)
+                .desc("Output BOM file")
+                .build());
+
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd;
+        try {
+            cmd = parser.parse(options, args);
+        } catch (ParseException e) {
+            LOG.debug("Caught problem parsing ", e);
+            System.err.println(e.getMessage());
+
+            HelpFormatter formatter = new HelpFormatter();
+            formatter.printHelp("...", options);
+            return 10;
         }
-        return new DefaultArtifact(split[0], split[1], null, split[2]);
-    }
 
-    private static Artifact newVersionRangeArtifact(String gav) {
-        String[] split = gav.split(":");
-        if (split.length != 3) {
-            throw new RuntimeException("Invalid GAV: " + gav);
+        if (cmd.hasOption('h')) {
+            HelpFormatter formatter = new HelpFormatter();
+            formatter.printHelp("...", options);
+            System.exit(0);
         }
-        return new DefaultArtifact(split[0], split[1], null, "[" + split[2] + ",)");
-    }
+        if (cmd.hasOption('d')) {
+            dependenciesFile = new File(cmd.getOptionValue('d'));
+        }
+        if (cmd.hasOption('c')) {
+            configurationFile = new File(cmd.getOptionValue('c'));
+        }
+        if (cmd.hasOption('o')) {
+            bomFile = new File(cmd.getOptionValue('o'));
+        }
 
-    private static DefaultServiceLocator newServiceLocator() {
-        DefaultServiceLocator locator = new DefaultServiceLocator();
-        locator.addService(ArtifactDescriptorReader.class, DefaultArtifactDescriptorReader.class);
-        locator.addService(VersionResolver.class, DefaultVersionResolver.class);
-        locator.addService(VersionRangeResolver.class, DefaultVersionRangeResolver.class);
-        locator.addService(MetadataGeneratorFactory.class, SnapshotMetadataGeneratorFactory.class);
-        locator.addService(MetadataGeneratorFactory.class, VersionsMetadataGeneratorFactory.class);
-        return locator;
-    }
+        AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver();
+        DependencyUpdater updater = new DependencyUpdater(dependenciesFile, configurationFile, availableVersionsResolver);
+        updater.generateUpgradeBom(bomFile);
 
-    private static RepositorySystem newRepositorySystem() {
-        DefaultServiceLocator locator = newServiceLocator();
-        locator.addService( RepositoryConnectorFactory.class, BasicRepositoryConnectorFactory.class );
-//        locator.addService( TransporterFactory.class, FileTransporterFactory.class );
-        locator.addService( TransporterFactory.class, HttpTransporterFactory.class );
-
-        locator.setErrorHandler( new DefaultServiceLocator.ErrorHandler()
-        {
-            @Override
-            public void serviceCreationFailed( Class<?> type, Class<?> impl, Throwable exception )
-            {
-                LOG.errorf( "Service creation failed for %s implementation %s: %s",
-                        type, impl, exception.getMessage(), exception );
-            }
-        } );
-
-        return locator.getService(RepositorySystem.class);
-    }
-
-    private static DefaultRepositorySystemSession newRepositorySystemSession(RepositorySystem system )
-    {
-        DefaultRepositorySystemSession session = MavenRepositorySystemUtils.newSession();
-
-        LocalRepository localRepo = new LocalRepository( "target/local-repo" );
-        session.setLocalRepositoryManager( system.newLocalRepositoryManager( session, localRepo ) );
-
-//        session.setTransferListener( new ConsoleTransferListener() );
-//        session.setRepositoryListener( new ConsoleRepositoryListener() );
-
-        // uncomment to generate dirty trees
-        // session.setDependencyGraphTransformer( null );
-
-        return session;
-    }
-
-    private static List<RemoteRepository> newRepositories() {
-        return Collections.singletonList(
-                new RemoteRepository.Builder("central", "default", "https://repo.maven.apache.org/maven2/")
-                        .build());
+        return 0;
     }
 }

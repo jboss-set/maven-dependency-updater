@@ -1,0 +1,4 @@
+org.wildfly.build:wildfly-server-provisioning-standalone:1.2.10.Final
+org.eclipse:yasson:1.0.3
+org.infinispan:infinispan-cachestore-jdbc:9.4.14.Final
+org.picketlink:picketlink-config:2.5.5.SP12

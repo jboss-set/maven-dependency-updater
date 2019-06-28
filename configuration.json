@@ -1,0 +1,6 @@
+{
+  "bom-coordinates": "org.wildfly:alignment-bom:0.0.1",
+  "streams": {
+    "org.picketlink:*": "QUALIFIER"
+  }
+}

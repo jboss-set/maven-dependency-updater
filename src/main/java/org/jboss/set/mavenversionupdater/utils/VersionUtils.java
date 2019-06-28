@@ -1,50 +1,28 @@
-package org.jboss.set.mavenversionupdater;
+package org.jboss.set.mavenversionupdater.utils;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
 import org.commonjava.maven.ext.core.impl.Version;
+import org.jboss.set.mavenversionupdater.VersionStream;
 
-public class VersionComparison {
+public class VersionUtils {
 
     public static String DELIMITER_REGEX = "[.\\-_]";
 
-    public enum ComparisonLevel {
-        ANY(-1, null),
-        MAJOR(0, ANY),
-        MINOR(1, MAJOR),
-        MICRO(2, MINOR),
-//        QUALIFIER(null, MICRO)
-        ;
-
-        Integer level;
-        ComparisonLevel higher;
-
-        ComparisonLevel(Integer level, ComparisonLevel higher) {
-            this.level = level;
-            this.higher = higher;
-        }
-
-        public ComparisonLevel up() {
-            return higher;
-        }
-    }
-
     /**
+     * Do given versions belong to the same stream stream?
      *
-     * @param v1
-     * @param v2
-     * @param level
-     * @return
+     * E.g.: "1.1.2" and 1.1.3" belong to the same MINOR stream, but not into the same MICRO stream.
      */
-    public static boolean equalMmm(String v1, String v2, ComparisonLevel level) {
+    public static boolean equalMmm(String v1, String v2, VersionStream stream) {
         String mmm1 = Version.getMMM(v1);
         String[] mmm1Split = mmm1.split(DELIMITER_REGEX);
         String mmm2 = Version.getMMM(v2);
         String[] mmm2Split = mmm2.split(DELIMITER_REGEX);
 
-        int correctedLevel = level.level != null ? level.level
+        int correctedLevel = stream.level() != null ? stream.level()
                 : Math.max(mmm1Split.length, mmm2Split.length) - 1; // correct null value
 
         for (int i = 0; i <= correctedLevel; i++) {
@@ -63,17 +41,23 @@ public class VersionComparison {
     }
 
     /**
+     * Searches given list of available versions for the latest version in given stream.
      *
-     * @param level the segment of the version that must remain unchanged
+     * @param stream the highest segment of the version that is allowed to change
      * @param originalVersion original artifact version
      * @param availableVersions available version
-     * @return
+     * @return latest available version in given stream
      */
-    public static Optional<org.eclipse.aether.version.Version> findLatest(VersionComparison.ComparisonLevel level,
+    public static Optional<org.eclipse.aether.version.Version> findLatest(VersionStream stream,
                                                                           String originalVersion,
                                                                           List<org.eclipse.aether.version.Version> availableVersions) {
+        if (VersionStream.ANY.equals(stream)) { // ANY => consider all available versions
+            return availableVersions.stream().max(Comparator.naturalOrder());
+        }
+
+        // otherwise consider only versions in given stream
         return availableVersions.stream()
-                .filter(v -> equalMmm(originalVersion, v.toString(), level))
+                .filter(v -> equalMmm(originalVersion, v.toString(), stream.higher()))
                 .max(Comparator.naturalOrder());
     }
 
