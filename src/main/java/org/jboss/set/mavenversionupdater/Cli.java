@@ -11,17 +11,18 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.jboss.logging.Logger;
 
-public class Main {
+public class Cli {
 
-    private static final Logger LOG = Logger.getLogger(Main.class);
+    private static final Logger LOG = Logger.getLogger(Cli.class);
 
     private File dependenciesFile;
     private File configurationFile;
     private File bomFile;
+    private File pomFile;
 
     public static void main(String[] args) {
         try {
-            System.exit(new Main().run(args));
+            System.exit(new Cli().run(args));
         } catch (Exception e) {
             LOG.error(e);
             System.exit(1);
@@ -45,12 +46,17 @@ public class Main {
                 .numberOfArgs(1)
                 .desc("Configuration JSON file")
                 .build());
-        options.addOption(Option.builder("o")
-                .longOpt("output")
-                .required()
+        options.addOption(Option.builder("b")
+                .longOpt("bom")
                 .hasArgs()
                 .numberOfArgs(1)
-                .desc("Output BOM file")
+                .desc("Generate BOM file with upgraded dependencies, argument is a file path")
+                .build());
+        options.addOption(Option.builder("f")
+                .longOpt("file")
+                .hasArgs()
+                .numberOfArgs(1)
+                .desc("pom.xml file that will be upgraded")
                 .build());
 
         CommandLineParser parser = new DefaultParser();
@@ -80,10 +86,19 @@ public class Main {
         if (cmd.hasOption('o')) {
             bomFile = new File(cmd.getOptionValue('o'));
         }
+        if (cmd.hasOption('f')) {
+            pomFile = new File(cmd.getOptionValue('f'));
+        }
 
         AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver();
         DependencyUpdater updater = new DependencyUpdater(dependenciesFile, configurationFile, availableVersionsResolver);
-        updater.generateUpgradeBom(bomFile);
+
+        if (bomFile != null) {
+            updater.generateUpgradeBom(bomFile);
+        }
+        if (pomFile != null) {
+            updater.upgradePom(pomFile);
+        }
 
         return 0;
     }

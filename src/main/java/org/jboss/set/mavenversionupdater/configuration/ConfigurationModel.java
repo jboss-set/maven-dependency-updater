@@ -12,6 +12,11 @@ public class ConfigurationModel {
     @JsonProperty(value = "bom-coordinates", required = true)
     private String bomCoordinates;
 
+    /**
+     * GAV of the BOM that's going to be generated.
+     *
+     * @deprecated
+     */
     public String getBomCoordinates() {
         return bomCoordinates;
     }

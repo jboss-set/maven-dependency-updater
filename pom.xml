@@ -101,7 +101,7 @@
                     <archive>
                         <index>true</index>
                         <manifest>
-                            <mainClass>org.jboss.set.mavenversionupdater.Main</mainClass>
+                            <mainClass>org.jboss.set.mavenversionupdater.Cli</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

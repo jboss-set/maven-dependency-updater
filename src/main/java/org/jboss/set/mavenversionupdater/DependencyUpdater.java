@@ -10,12 +10,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.aether.RepositoryException;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.version.Version;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavenversionupdater.configuration.Configuration;
+import org.jboss.set.mavenversionupdater.utils.PomIO;
 import org.jboss.set.mavenversionupdater.utils.VersionUtils;
 
 public class DependencyUpdater {
@@ -33,11 +35,25 @@ public class DependencyUpdater {
         this.availableVersionsResolver = availableVersionsResolver;
     }
 
+    public void upgradePom(File pomFile) throws IOException, XmlPullParserException {
+        PomIO.updateDependencyVersions(pomFile, getVersionsToUpgrade());
+    }
+
+    /**
+     * Generates BOM file containing upgraded artifacts.
+     *
+     * @param bomFile target file
+     */
     public void generateUpgradeBom(File bomFile) throws IOException {
         BomExporter exporter = new BomExporter(configuration.getBomCoordinates(), getVersionsToUpgrade());
         exporter.export(bomFile);
     }
 
+    /**
+     * Determine which artifacts can be upgraded.
+     *
+     * @return returns map G:A => newVersion
+     */
     public Map<String, String> getVersionsToUpgrade() throws IOException {
         List<String> dependencies = Files.readAllLines(dependenciesFile.toPath());
         Map<String, String> versionsToUpgrade = new HashMap<>();
