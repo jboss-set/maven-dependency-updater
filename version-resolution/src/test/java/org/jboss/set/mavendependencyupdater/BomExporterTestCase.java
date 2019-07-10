@@ -3,60 +3,34 @@ package org.jboss.set.mavendependencyupdater;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-public class DependencyUpdaterTestCase {
+public class BomExporterTestCase {
 
     @Rule
     public TemporaryFolder tempDir = new TemporaryFolder();
 
-    private DependencyUpdater updater;
-
-    @Before
-    public void setUp() throws URISyntaxException, IOException {
-        URL alignmentFile = getClass().getClassLoader().getResource("configuration.json");
-        Assert.assertNotNull(alignmentFile);
-        URL dependenciesFile = getClass().getClassLoader().getResource("dependencies.txt");
-        Assert.assertNotNull(dependenciesFile);
-
-        AvailableVersionsResolverMock resolver = new AvailableVersionsResolverMock();
-        resolver.setResult("org.wildfly:wildfly-messaging",
-                Arrays.asList("1.1.1", "1.1.2", "1.2.0")); // MINOR
-        resolver.setResult("org.picketlink:picketlink-impl",
-                Arrays.asList("1.1.1.SP01", "1.1.1.SP02", "1.1.2.SP01", "1.1.2.SP02")); // SP
-        resolver.setResult("org.wildfly:wildfly-core",
-                Arrays.asList("1.1.1", "1.1.2", "1.2.3")); // MICRO
-
-        updater = new DependencyUpdater(new File(dependenciesFile.toURI()), new File(alignmentFile.toURI()), resolver);
-    }
-
-    @Test
-    public void testGetVersionsToUpgrade() throws IOException {
-        Map<String, String> versions = updater.getVersionsToUpgrade();
-
-        Assert.assertEquals("1.2.0", versions.get("org.wildfly:wildfly-messaging"));
-        Assert.assertEquals("1.1.1.SP02", versions.get("org.picketlink:picketlink-impl"));
-        Assert.assertEquals("1.1.2", versions.get("org.wildfly:wildfly-core"));
-    }
-
     @Test
     public void testGenerateUpgradeBom() throws IOException, XmlPullParserException {
         File bomFile = new File(tempDir.getRoot(), "pom.xml");
-        updater.generateUpgradeBom(bomFile);
+
+        HashMap<String, String> deps = new HashMap<>();
+        deps.put("org.wildfly:wildfly-messaging", "1.2.0");
+        deps.put("org.picketlink:picketlink-impl", "1.1.1.SP02");
+        deps.put("org.wildfly:wildfly-core", "1.1.2");
+
+        new BomExporter(SimpleArtifactRef.parse("test:test:0.1"), deps).export(bomFile);
 
         Assert.assertTrue(bomFile.exists());
 

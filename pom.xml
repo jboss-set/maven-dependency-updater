@@ -14,13 +14,14 @@
         <maven.compiler.source>1.8</maven.compiler.source>
 
         <pmeVersion>3.7.1</pmeVersion>
-        <mavenVersion>3.5.0</mavenVersion>
+        <mavenVersion>3.5.4</mavenVersion>
         <atlasVersion>0.17.1</atlasVersion>
     </properties>
 
     <modules>
         <module>version-resolution</module>
         <module>cli</module>
+        <module>pme-dependency-collector</module>
     </modules>
 
     <dependencyManagement>
@@ -43,7 +44,12 @@
             <dependency>
                 <groupId>org.apache.maven</groupId>
                 <artifactId>maven-core</artifactId>
-                <version>3.5.4</version>
+                <version>${mavenVersion}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.maven</groupId>
+                <artifactId>maven-compat</artifactId>
+                <version>${mavenVersion}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.maven.resolver</groupId>
@@ -54,6 +60,12 @@
                 <groupId>org.apache.maven.resolver</groupId>
                 <artifactId>maven-resolver-transport-http</artifactId>
                 <version>1.0.3</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.eclipse.aether</groupId>
+                <artifactId>aether-api</artifactId>
+                <version>1.1.0</version>
             </dependency>
 
             <!-- PME -->

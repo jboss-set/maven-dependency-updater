@@ -18,6 +18,11 @@
             <artifactId>maven-dependency-updater-resolution</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>pme-dependency-collector</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>commons-cli</groupId>

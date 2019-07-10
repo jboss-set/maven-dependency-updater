@@ -2,51 +2,30 @@ package org.jboss.set.mavendependencyupdater;
 
 import static org.jboss.set.mavendependencyupdater.VersionStream.MICRO;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.aether.RepositoryException;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.version.Version;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
-import org.jboss.set.mavendependencyupdater.utils.PomIO;
 import org.jboss.set.mavendependencyupdater.utils.VersionUtils;
 
-public class DependencyUpdater {
+public class DependencyEvaluator {
 
-    private static final Logger LOG = Logger.getLogger(DependencyUpdater.class);
+    private static final Logger LOG = Logger.getLogger(DependencyEvaluator.class);
 
-    private File dependenciesFile;
     private Configuration configuration;
     private AvailableVersionsResolver availableVersionsResolver;
 
-    public DependencyUpdater(File dependenciesFile, File configurationFile,
-                             AvailableVersionsResolver availableVersionsResolver) throws IOException {
-        this.dependenciesFile = dependenciesFile;
-        this.configuration = new Configuration(configurationFile);
+    public DependencyEvaluator(Configuration configuration, AvailableVersionsResolver availableVersionsResolver) {
+        this.configuration = configuration;
         this.availableVersionsResolver = availableVersionsResolver;
-    }
-
-    public void upgradePom(File pomFile) throws IOException, XmlPullParserException {
-        PomIO.updateDependencyVersions(pomFile, getVersionsToUpgrade());
-    }
-
-    /**
-     * Generates BOM file containing upgraded artifacts.
-     *
-     * @param bomFile target file
-     */
-    public void generateUpgradeBom(File bomFile) throws IOException {
-        BomExporter exporter = new BomExporter(configuration.getBomCoordinates(), getVersionsToUpgrade());
-        exporter.export(bomFile);
     }
 
     /**
@@ -54,8 +33,7 @@ public class DependencyUpdater {
      *
      * @return returns map G:A => newVersion
      */
-    public Map<String, String> getVersionsToUpgrade() throws IOException {
-        List<String> dependencies = Files.readAllLines(dependenciesFile.toPath());
+    public Map<String, String> getVersionsToUpgrade(Collection<String> dependencies) {
         Map<String, String> versionsToUpgrade = new HashMap<>();
 
         for (String gav : dependencies) {
@@ -77,14 +55,14 @@ public class DependencyUpdater {
                 List<Version> versions = availableVersionsResolver.resolveVersionRange(rangeArtifact);
                 Optional<Version> latest = VersionUtils.findLatest(stream, artifact.getBaseVersion(), versions);
 
-                System.out.println(String.format("Available versions for %s %s: %s", gav, stream, versions));
+                LOG.infof("Available versions for %s %s: %s", gav, stream, versions);
                 if (latest.isPresent()
                         && !artifact.getBaseVersion().equals(latest.get().toString())) {
-                    System.out.println(String.format("  => %s", latest.get().toString()));
+                    LOG.infof("  => %s", latest.get().toString());
                     versionsToUpgrade.put(artifact.getGroupId() + ":" + artifact.getArtifactId(),
                             latest.get().toString());
                 } else {
-                    System.out.println("  => no change");
+                    LOG.info("  => no change");
                 }
             } catch (RepositoryException e) {
                 LOG.errorf("Could not resolve %s", rangeArtifact.toString());
