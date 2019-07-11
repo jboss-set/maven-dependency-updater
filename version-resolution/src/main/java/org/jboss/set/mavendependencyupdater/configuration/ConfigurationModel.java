@@ -9,13 +9,11 @@ public class ConfigurationModel {
     @JsonProperty
     private Map<String, String> streams;
 
-    @JsonProperty(value = "bom-coordinates", required = true)
+    @JsonProperty(value = "bom-coordinates")
     private String bomCoordinates;
 
     /**
      * GAV of the BOM that's going to be generated.
-     *
-     * @deprecated
      */
     public String getBomCoordinates() {
         return bomCoordinates;

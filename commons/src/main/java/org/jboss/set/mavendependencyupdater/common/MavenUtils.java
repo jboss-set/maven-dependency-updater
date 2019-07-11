@@ -1,4 +1,4 @@
-package org.jboss.set.mavendependencyupdater.utils;
+package org.jboss.set.mavendependencyupdater.common;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -6,19 +6,35 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
-import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.jboss.logging.Logger;
-import org.jboss.set.mavendependencyupdater.BomExporter;
 
-public class PomIO {
+public class MavenUtils {
 
-    private static Logger LOG = Logger.getLogger(PomIO.class);
+    private static Logger LOG = Logger.getLogger(MavenUtils.class);
 
+    public static boolean isProperty(String value) {
+        return value.startsWith("${") && value.endsWith("}");
+    }
+
+    public static String extractPropertyName(String value) {
+        if (!isProperty(value)) {
+            throw new IllegalArgumentException("Not a property: " + value);
+        }
+        return value.substring(2, value.length() - 1);
+    }
+
+    /**
+     * This is very stupid, temporary implementation.
+     *
+     * @deprecated Use PomDependencyUpdater
+     */
     public static void updateDependencyVersions(File pomFile, Map<String, String> upgradedDependencies)
             throws IOException, XmlPullParserException {
         List<String> lines = Files.readAllLines(pomFile.toPath());
@@ -39,8 +55,8 @@ public class PomIO {
 
             if (StringUtils.isEmpty(version)) {
                 throw new IllegalArgumentException("Expected version string in managed dependency.");
-            } else if (version.startsWith("${") && version.endsWith("}")) {
-                String propertyName = version.substring(2, version.length() - 1);
+            } else if (isProperty(version)) {
+                String propertyName = extractPropertyName(version);
                 String propertyValue = model.getProperties().getProperty(propertyName);
 
                 LOG.infof("Upgrading dependency %s from %s to %s", ga, propertyValue, newVersion);
@@ -65,17 +81,15 @@ public class PomIO {
         Files.write(pomFile.toPath(), lines);
     }
 
-    /**
-     * Generates BOM file containing upgraded artifacts.
-     *
-     * @param bomFile target file
-     * @param coordinates bom GAV
-     * @param dependencies managed dependencies
-     */
-    public static void generateUpgradeBom(File bomFile, ArtifactRef coordinates, Map<String, String> dependencies)
-            throws IOException {
-        BomExporter exporter = new BomExporter(coordinates, dependencies);
-        exporter.export(bomFile);
+    public static Optional<Dependency> findDependency(List<Dependency> dependencies, String artifactId) {
+        return dependencies.stream().filter(d -> artifactId.equals(d.getArtifactId())).findFirst();
+    }
+
+    public static Optional<Dependency> findDependency(List<Dependency> dependencies, String groupId, String artifactId) {
+        return dependencies.stream()
+                .filter(d -> artifactId.equals(d.getArtifactId())
+                        && groupId.equals(d.getGroupId()))
+                .findFirst();
     }
 
     private static void replaceProperty(List<String> lines, String propertyName, String newValue) {

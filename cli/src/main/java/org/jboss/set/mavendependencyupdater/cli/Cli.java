@@ -1,7 +1,7 @@
 package org.jboss.set.mavendependencyupdater.cli;
 
 import java.io.File;
-import java.nio.file.Files;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -17,17 +17,17 @@ import org.apache.commons.cli.ParseException;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.AvailableVersionsResolver;
+import org.jboss.set.mavendependencyupdater.BomExporter;
 import org.jboss.set.mavendependencyupdater.DefaultAvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
+import org.jboss.set.mavendependencyupdater.PomDependencyUpdater;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.jboss.set.mavendependencyupdater.projectparser.PmeDependencyCollector;
-import org.jboss.set.mavendependencyupdater.utils.PomIO;
 
 public class Cli {
 
     private static final Logger LOG = Logger.getLogger(Cli.class);
 
-    private File dependenciesFile;
     private Configuration configuration;
     private File bomFile;
     private File pomFile;
@@ -44,12 +44,6 @@ public class Cli {
     private int run(String[] args) throws Exception {
         Options options = new Options();
         options.addOption(Option.builder("h").longOpt("help").desc("Print help").build());
-        options.addOption(Option.builder("d")
-                .longOpt("dependencies")
-                .hasArgs()
-                .numberOfArgs(1)
-                .desc("Dependencies file (in GAV per line format)")
-                .build());
         options.addOption(Option.builder("c")
                 .longOpt("config")
                 .required()
@@ -75,7 +69,7 @@ public class Cli {
         try {
             cmd = parser.parse(options, args);
         } catch (ParseException e) {
-            LOG.debug("Caught problem parsing ", e);
+            LOG.debug("Caught problem parsing CLI arguments", e);
             System.err.println(e.getMessage());
 
             HelpFormatter formatter = new HelpFormatter();
@@ -88,9 +82,6 @@ public class Cli {
             formatter.printHelp("...", options);
             return 0;
         }
-        if (cmd.hasOption('d')) {
-            dependenciesFile = new File(cmd.getOptionValue('d'));
-        }
         if (cmd.hasOption('c')) {
             File configurationFile = new File(cmd.getOptionValue('c'));
             configuration = new Configuration(configurationFile);
@@ -102,10 +93,6 @@ public class Cli {
             pomFile = new File(cmd.getOptionValue('f'));
         }
 
-        if (dependenciesFile == null && pomFile == null) {
-            System.err.println("Either `dependencies` or `file` switch must be set.");
-            return 1;
-        }
         if (bomFile == null && pomFile == null) {
             System.err.println("Either `bom` or `file` switch must be set.");
             return 1;
@@ -114,24 +101,27 @@ public class Cli {
         AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver();
         DependencyEvaluator updater = new DependencyEvaluator(configuration, availableVersionsResolver);
 
-        Collection<String> dependencies;
-        if (dependenciesFile != null) {
-            dependencies = Files.readAllLines(dependenciesFile.toPath());
-        } else {
-            Set<ArtifactRef> artifactRefs = new PmeDependencyCollector(pomFile).collectProjectDependencies();
-            dependencies = artifactRefs.stream()
-                    .map(ref -> String.format("%s:%s:%s", ref.getGroupId(), ref.getArtifactId(), ref.getVersionString()))
-                    .collect(Collectors.toList());
-        }
+        Set<ArtifactRef> artifactRefs = new PmeDependencyCollector(pomFile).collectProjectDependencies();
+        Collection<String> dependencies = artifactRefs.stream()
+                .map(ref -> String.format("%s:%s:%s", ref.getGroupId(), ref.getArtifactId(), ref.getVersionString()))
+                .collect(Collectors.toList());
+
 
         Map<String, String> newVersions = updater.getVersionsToUpgrade(dependencies);
 
         if (bomFile != null) {
-            PomIO.generateUpgradeBom(bomFile, configuration.getBomCoordinates(), newVersions);
+            generateUpgradeBom(bomFile, configuration.getBomCoordinates(), newVersions);
         } else if (pomFile != null) {
-            PomIO.updateDependencyVersions(pomFile, newVersions);
+            PomDependencyUpdater.upgradeDependencies(pomFile, newVersions);
         }
 
         return 0;
     }
+
+    private static void generateUpgradeBom(File bomFile, ArtifactRef coordinates, Map<String, String> dependencies)
+            throws IOException {
+        BomExporter exporter = new BomExporter(coordinates, dependencies);
+        exporter.export(bomFile);
+    }
+
 }

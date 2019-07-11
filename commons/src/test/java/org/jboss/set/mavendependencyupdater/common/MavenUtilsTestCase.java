@@ -1,4 +1,4 @@
-package org.jboss.set.mavendependencyupdater.utils;
+package org.jboss.set.mavendependencyupdater.common;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,7 +15,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-public class PomIOTestCase {
+public class MavenUtilsTestCase {
 
     @Rule
     public TemporaryFolder tempDir = new TemporaryFolder();
@@ -37,7 +37,7 @@ public class PomIOTestCase {
         deps.put("org.jboss.logging:jboss-logging", "3.4.0.Final-redhat-00001");
 //        deps.put("junit:junit", "4.12-redhat-00001");
 
-        PomIO.updateDependencyVersions(pomFile, deps);
+        MavenUtils.updateDependencyVersions(pomFile, deps);
 
         MavenXpp3Reader reader = new MavenXpp3Reader();
         Model model = reader.read(new FileInputStream(pomFile));
@@ -45,7 +45,7 @@ public class PomIOTestCase {
         Assert.assertEquals("1.4.0-redhat-00001", model.getProperties().getProperty("version.commons-cli"));
         Assert.assertEquals("3.4.0.Final-redhat-00001", model.getProperties().getProperty("version.jboss-logging"));
 
-        // TODO
+        // TODO: not implemented
         /*Optional<Dependency> junitDep = model.getDependencyManagement().getDependencies().stream()
                 .filter(d -> "junit".equals(d.getArtifactId())).findFirst();
         Assert.assertTrue(junitDep.isPresent());

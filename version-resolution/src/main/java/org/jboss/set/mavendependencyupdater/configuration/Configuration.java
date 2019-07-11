@@ -10,6 +10,9 @@ import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
 import org.jboss.set.mavendependencyupdater.VersionStream;
 
+/**
+ * Provides app configuration.
+ */
 public class Configuration {
 
     private static final String WILDCARD = "*";
@@ -21,7 +24,11 @@ public class Configuration {
         ObjectMapper mapper = new ObjectMapper();
         ConfigurationModel data = mapper.readValue(file, ConfigurationModel.class);
 
-        bomCoordinates = SimpleArtifactRef.parse(data.getBomCoordinates());
+        if (data.getBomCoordinates() != null) {
+            bomCoordinates = SimpleArtifactRef.parse(data.getBomCoordinates());
+        } else {
+            bomCoordinates = new SimpleArtifactRef("undefined", "undefined", "0.1-SNAPSHOT", null, null);
+        }
 
         for (Map.Entry<String, String> entry: data.getStreams().entrySet()) {
             String[] ga = entry.getKey().split(":");
