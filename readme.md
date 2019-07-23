@@ -33,6 +33,12 @@ Example `configuration.json`:
   * `QUALIFIER` - upgrade to the latest QUALIFIER version, MAJOR, MINOR and MICRO must not change.
   
   Default stream is `MICRO`.
+  
+## Limitations
+
+* In a multi-module project, currently only the top level module dependencies are upgraded.
+* Dependencies defined in profiles are not upgraded.
+* Plugins are not upgraded.
 
 ## Examples
 
