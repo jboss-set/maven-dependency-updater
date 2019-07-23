@@ -1,20 +1,23 @@
 package org.jboss.set.mavendependencyupdater;
 
+import org.apache.maven.model.Dependency;
+import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
+import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
-import org.apache.maven.model.Dependency;
-import org.apache.maven.model.Model;
-import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
-import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
-import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import static org.jboss.set.mavendependencyupdater.common.AtlasUtils.newArtifactRef;
 
 public class BomExporterTestCase {
 
@@ -25,10 +28,10 @@ public class BomExporterTestCase {
     public void testGenerateUpgradeBom() throws IOException, XmlPullParserException {
         File bomFile = new File(tempDir.getRoot(), "pom.xml");
 
-        HashMap<String, String> deps = new HashMap<>();
-        deps.put("org.wildfly:wildfly-messaging", "1.2.0");
-        deps.put("org.picketlink:picketlink-impl", "1.1.1.SP02");
-        deps.put("org.wildfly:wildfly-core", "1.1.2");
+        HashMap<ArtifactRef, String> deps = new HashMap<>();
+        deps.put(newArtifactRef("org.wildfly", "wildfly-messaging", "1.1.1"), "1.2.0");
+        deps.put(newArtifactRef("org.picketlink", "picketlink-impl", "1.1.1.SP01"), "1.1.1.SP02");
+        deps.put(newArtifactRef("org.wildfly", "wildfly-core", "1.1.1"), "1.1.2");
 
         new BomExporter(SimpleArtifactRef.parse("test:test:0.1"), deps).export(bomFile);
 

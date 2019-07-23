@@ -1,5 +1,18 @@
 package org.jboss.set.mavendependencyupdater;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.maven.model.Dependency;
+import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import javax.xml.stream.XMLStreamException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -7,19 +20,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Optional;
-import javax.xml.stream.XMLStreamException;
 
-import org.apache.commons.lang3.StringUtils;
-import org.apache.maven.model.Dependency;
-import org.apache.maven.model.Model;
-import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
-import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
-import org.jboss.set.mavendependencyupdater.common.MavenUtils;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import static org.jboss.set.mavendependencyupdater.common.AtlasUtils.newArtifactRef;
 
 public class PomDependencyUpdaterTestCase {
 
@@ -40,11 +42,11 @@ public class PomDependencyUpdaterTestCase {
 
     @Test
     public void testUpgradeDependencies() throws IOException, XMLStreamException, XmlPullParserException {
-        HashMap<String, String> deps = new HashMap<>();
-        deps.put("commons-cli:commons-cli", "1.4.redhat-00001");
-        deps.put("org.jboss.logging:jboss-logging", "3.4.0.redhat-00001");
-        deps.put("junit:junit", "4.13.redhat-00001");
-        deps.put("org.apache.maven:maven-core", "3.5.0.redhat-00001");
+        HashMap<ArtifactRef, String> deps = new HashMap<>();
+        deps.put(newArtifactRef("commons-cli", "commons-cli", "1.4"), "1.4.redhat-00001");
+        deps.put(newArtifactRef("org.jboss.logging", "jboss-logging", "3.4.0"), "3.4.0.redhat-00001");
+        deps.put(newArtifactRef("junit", "junit", "4.12"), "4.13.redhat-00001");
+        deps.put(newArtifactRef("org.apache.maven", "maven-core", "3.5.0"), "3.5.0.redhat-00001");
 
         PomDependencyUpdater.upgradeDependencies(pomFile, deps);
 

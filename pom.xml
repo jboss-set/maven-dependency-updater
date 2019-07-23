@@ -24,6 +24,7 @@
         <module>pme-dependency-collector</module>
         <module>versions-plugin-pom-updater</module>
         <module>commons</module>
+        <module>dependency-collector</module>
     </modules>
 
     <dependencyManagement>
@@ -95,6 +96,11 @@
                 <groupId>org.commonjava.maven.ext</groupId>
                 <artifactId>pom-manipulation-io</artifactId>
                 <version>${pmeVersion}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.commonjava.maven.atlas</groupId>
+                <artifactId>atlas-identities</artifactId>
+                <version>${atlasVersion}</version>
             </dependency>
 
             <!-- Logging -->

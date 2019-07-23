@@ -14,9 +14,9 @@ import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 public class BomExporter {
 
     private ArtifactRef coords;
-    private Map<String, String> dependencies;
+    private Map<ArtifactRef, String> dependencies;
 
-    public BomExporter(ArtifactRef coords, Map<String, String> dependencies) {
+    public BomExporter(ArtifactRef coords, Map<ArtifactRef, String> dependencies) {
         this.coords = coords;
         this.dependencies = dependencies;
     }
@@ -31,7 +31,7 @@ public class BomExporter {
 
         model.setDependencyManagement(new DependencyManagement());
 
-        for (Map.Entry<String, String> entry: dependencies.entrySet()) {
+        for (Map.Entry<ArtifactRef, String> entry: dependencies.entrySet()) {
             model.getDependencyManagement().addDependency(newDependency(entry.getKey(), entry.getValue()));
         }
 
@@ -39,17 +39,11 @@ public class BomExporter {
         writer.write(new FileOutputStream(bomFile), model);
     }
 
-    static Dependency newDependency(String ga, String version) {
-        String[] split = ga.split(":");
-        if (split.length != 2) {
-            throw new IllegalArgumentException("Invalid GA: " + ga);
-        }
-
+    static Dependency newDependency(ArtifactRef ref, String version) {
         Dependency dep = new Dependency();
-        dep.setGroupId(split[0]);
-        dep.setArtifactId(split[1]);
+        dep.setGroupId(ref.getGroupId());
+        dep.setArtifactId(ref.getArtifactId());
         dep.setVersion(version);
-
         return dep;
     }
 }

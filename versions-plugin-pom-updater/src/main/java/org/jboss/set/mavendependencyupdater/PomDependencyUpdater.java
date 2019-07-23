@@ -19,14 +19,14 @@ import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.WriterFactory;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.codehaus.stax2.XMLInputFactory2;
+import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.jboss.logging.Logger;
-import org.jboss.set.mavendependencyupdater.common.MavenUtils;
 
 public class PomDependencyUpdater {
 
     private static final Logger LOG = Logger.getLogger(PomDependencyUpdater.class);
 
-    public static void upgradeDependencies(File pomFile, Map<String, String> dependencies)
+    public static void upgradeDependencies(File pomFile, Map<ArtifactRef, String> dependencies)
             throws XMLStreamException, IOException, XmlPullParserException {
         StringBuilder content = PomHelper.readXmlFile(pomFile);
         Model model = new MavenXpp3Reader().read(new FileInputStream(pomFile));
@@ -35,49 +35,41 @@ public class PomDependencyUpdater {
         inputFactory.setProperty(XMLInputFactory2.P_PRESERVE_LOCATION, Boolean.TRUE);
         ModifiedPomXMLEventReader pom = new ModifiedPomXMLEventReader(content, inputFactory);
 
-        for (Map.Entry<String, String> entry: dependencies.entrySet()) {
-            String[] ga = entry.getKey().split(":");
-            if (ga.length != 2) {
-                throw new IllegalArgumentException("Expected G:A");
-            }
+        for (Map.Entry<ArtifactRef, String> entry: dependencies.entrySet()) {
+            ArtifactRef ref = entry.getKey();
 
-
-            // TODO: Temporary solution, old version should be handed over by a caller?
-            // TODO: But still need to determine profile and whether the version is in property or in version tag.
+            // TODO: Need to determine profile.
             // TODO: Handle profiles.
             // TODO: Handle submodules.
             // TODO: Handle plugins?
-            String oldVersion = null;
+            boolean found = false;
             String propertyName = null;
-            Optional<Dependency> dependency = MavenUtils.findDependency(model.getDependencies(), ga[0], ga[1]);
+            Optional<Dependency> dependency =
+                    MavenUtils.findDependency(model.getDependencies(), ref.getGroupId(), ref.getArtifactId());
             if (dependency.isPresent()) {
                 String version = dependency.get().getVersion();
                 if (!StringUtils.isEmpty(version)) {
                     if (MavenUtils.isProperty(version)) { // property
                         propertyName = MavenUtils.extractPropertyName(version);
-                        oldVersion = model.getProperties().getProperty(propertyName);
-                    } else { // version specified directly
-                        oldVersion = version;
                     }
+                    found = true;
                 }
             }
-            if (oldVersion == null) {
-                dependency = MavenUtils.findDependency(model.getDependencyManagement().getDependencies(), ga[0], ga[1]);
+            if (!found) {
+                dependency = MavenUtils.findDependency(model.getDependencyManagement().getDependencies(),
+                        ref.getGroupId(), ref.getArtifactId());
                 if (dependency.isPresent()) {
                     String version = dependency.get().getVersion();
                     if (!StringUtils.isEmpty(version)) {
                         if (MavenUtils.isProperty(version)) { // property
                             propertyName = MavenUtils.extractPropertyName(version);
-                            oldVersion = model.getProperties().getProperty(propertyName);
-                        } else { // version specified directly
-                            oldVersion = version;
                         }
+                        found = true;
                     }
                 }
             }
-            if (oldVersion == null) {
-//                throw new IllegalArgumentException("Old version not determined for " + entry.getKey());
-                LOG.errorf("Could not upgrade version of %s", entry.getKey());
+            if (!found) {
+                LOG.errorf("Could not upgrade version of %s", ref);
                 continue;
             }
 
@@ -85,7 +77,8 @@ public class PomDependencyUpdater {
             if (propertyName != null) { // version specified by a property
                 PomHelper.setPropertyVersion(pom, null, propertyName, entry.getValue());
             } else { // version specified directly
-                PomHelper.setDependencyVersion(pom, ga[0], ga[1], oldVersion, entry.getValue(), model);
+                PomHelper.setDependencyVersion(pom, ref.getGroupId(), ref.getArtifactId(), ref.getVersionString(),
+                        entry.getValue(), model);
             }
         }
 

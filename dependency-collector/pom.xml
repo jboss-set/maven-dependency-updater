@@ -9,7 +9,8 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>versions-plugin-pom-updater</artifactId>
+    <artifactId>dependency-collector</artifactId>
+
 
     <dependencies>
         <dependency>
@@ -18,11 +19,7 @@
             <version>${project.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.commonjava.maven.atlas</groupId>
-            <artifactId>atlas-identities</artifactId>
-        </dependency>
-
+        <!--
         <dependency>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>versions-maven-plugin</artifactId>
@@ -44,6 +41,7 @@
             <artifactId>plexus-utils</artifactId>
             <version>3.0.24</version>
         </dependency>
+        -->
 
         <dependency>
             <groupId>org.apache.maven</groupId>
@@ -57,10 +55,10 @@
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-artifact</artifactId>
         </dependency>
-        <dependency>
+        <!--<dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-compat</artifactId>
-        </dependency>
+        </dependency>-->
     </dependencies>
 
 </project>

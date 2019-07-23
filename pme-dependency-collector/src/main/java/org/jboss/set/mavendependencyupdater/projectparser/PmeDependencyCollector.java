@@ -1,27 +1,10 @@
 package org.jboss.set.mavendependencyupdater.projectparser;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Properties;
-import java.util.Set;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.*;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.repository.MavenArtifactRepository;
-import org.apache.maven.execution.DefaultMavenExecutionRequest;
-import org.apache.maven.execution.DefaultMavenExecutionResult;
-import org.apache.maven.execution.MavenExecutionRequest;
-import org.apache.maven.execution.MavenExecutionRequestPopulationException;
-import org.apache.maven.execution.MavenExecutionRequestPopulator;
-import org.apache.maven.execution.MavenSession;
+import org.apache.maven.execution.*;
+import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Profile;
 import org.apache.maven.model.profile.DefaultProfileActivationContext;
 import org.apache.maven.model.profile.ProfileActivationContext;
@@ -32,19 +15,20 @@ import org.apache.maven.settings.building.DefaultSettingsBuildingRequest;
 import org.apache.maven.settings.building.SettingsBuilder;
 import org.apache.maven.settings.building.SettingsBuildingException;
 import org.apache.maven.settings.building.SettingsBuildingResult;
-import org.codehaus.plexus.DefaultContainerConfiguration;
-import org.codehaus.plexus.DefaultPlexusContainer;
-import org.codehaus.plexus.PlexusConstants;
-import org.codehaus.plexus.PlexusContainer;
-import org.codehaus.plexus.PlexusContainerException;
+import org.codehaus.plexus.*;
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
+import org.commonjava.maven.atlas.ident.ref.ProjectRef;
+import org.commonjava.maven.atlas.ident.ref.SimpleProjectRef;
 import org.commonjava.maven.ext.common.ManipulationException;
-import org.commonjava.maven.ext.core.ManipulationManager;
+import org.commonjava.maven.ext.common.model.Project;
 import org.commonjava.maven.ext.core.ManipulationSession;
-import org.commonjava.maven.ext.core.impl.RESTCollector;
 import org.commonjava.maven.ext.io.PomIO;
 import org.jboss.logging.Logger;
+
+import java.io.File;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Retrieves information about maven project dependencies.
@@ -58,16 +42,15 @@ public class PmeDependencyCollector {
 
     private ManipulationSession session;
 
-    private ManipulationManager manipulationManager;
-
     private PomIO pomIO;
 
     private PlexusContainer container;
 
-    /**
-     * Properties a user may define on the command line.
-     */
-    private Properties userProps;
+    private List<Project> projects;
+
+    private Map<ProjectRef, Collection<ArtifactRef>> projectsDependencies = new HashMap<>();
+
+    private ProjectRef rootProjectRef;
 
     /**
      * @deprecated
@@ -97,10 +80,14 @@ public class PmeDependencyCollector {
             File pomFile = new File(cmd.getOptionValue('f'));
 
             try {
-                Set<ArtifactRef> deps = new PmeDependencyCollector(pomFile).collectProjectDependencies();
+                Map<ProjectRef, Collection<ArtifactRef>> projectsDeps =
+                        new PmeDependencyCollector(pomFile).getAllProjectsDependencies();
 
-                for (ArtifactRef ref : deps) {
-                    System.out.println(ref.asProjectVersionRef().toString());
+                for (Map.Entry<ProjectRef, Collection<ArtifactRef>> entry: projectsDeps.entrySet()) {
+                    System.out.println(entry.getKey().toString());
+                    for (ArtifactRef ref : entry.getValue()) {
+                        System.out.println("  " + ref.asProjectVersionRef().toString());
+                    }
                 }
             } catch (ManipulationException e) {
                 LOG.error("Project evaluation failed", e);
@@ -108,14 +95,45 @@ public class PmeDependencyCollector {
         }
     }
 
-    public PmeDependencyCollector(File pomFile) {
+    public PmeDependencyCollector(File pomFile) throws ManipulationException {
+        LOG.infof("Creating collector for project %s", pomFile);
         createSession(pomFile, null);
+        projects = pomIO.parseProject(pomFile);
+
+        Project rootProject = projects.stream().filter(Project::isInheritanceRoot).findFirst().get();
+        rootProjectRef = toProjectRef(rootProject);
+
+        collectProjectDependencies();
     }
 
-    public Set<ArtifactRef> collectProjectDependencies() throws ManipulationException {
-        LOG.infof("Collecting dependencies from project %s", session.getPom().getPath());
-        return RESTCollector.establishAllDependencies(session, pomIO.parseProject(session.getPom()),
-                Collections.emptySet());
+    public Map<ProjectRef, Collection<ArtifactRef>> getAllProjectsDependencies() {
+        // TODO: unmodifiable
+        return projectsDependencies;
+    }
+
+    public Collection<ArtifactRef> getProjectDependencies(String groupId, String artifactId) {
+        // TODO: unmodifiable
+        return projectsDependencies.get(new SimpleProjectRef(groupId, artifactId));
+    }
+
+    public Collection<ArtifactRef> getRootProjectDependencies() {
+        return projectsDependencies.get(rootProjectRef);
+    }
+
+    private void collectProjectDependencies() throws ManipulationException {
+        for (Project project:  projects) {
+            Collection<ArtifactRef> dependencies = new HashSet<>();
+            projectsDependencies.put(toProjectRef(project), dependencies);
+
+            collectDependencies(dependencies, project.getResolvedManagedDependencies(session));
+            collectDependencies(dependencies, project.getResolvedDependencies(session));
+        }
+    }
+
+    private void collectDependencies(Collection<ArtifactRef> collectTo, Map<ArtifactRef, Dependency> dependencies) {
+        collectTo.addAll(dependencies.keySet().stream()
+                .filter(ref -> !ref.getVersionString().contains("&"))
+                .collect(Collectors.toList()));
     }
 
     private void createSession(File target, File settings) {
@@ -128,10 +146,10 @@ public class PmeDependencyCollector {
 
             pomIO = container.lookup(PomIO.class);
             session = container.lookup(ManipulationSession.class);
-            manipulationManager = container.lookup(ManipulationManager.class);
+//            manipulationManager = container.lookup(ManipulationManager.class);
 
             final MavenExecutionRequest req = new DefaultMavenExecutionRequest().setSystemProperties(System.getProperties())
-                    .setUserProperties(userProps)
+//                    .setUserProperties(userProps)
                     .setRemoteRepositories(Collections.emptyList());
 
             ArtifactRepository ar = null;
@@ -157,13 +175,13 @@ public class PmeDependencyCollector {
                 ar.setUrl("file://" + req.getLocalRepositoryPath());
             }
 
-            if (userProps != null && userProps.containsKey("maven.repo.local")) {
+            /*if (userProps != null && userProps.containsKey("maven.repo.local")) {
                 if (ar == null) {
                     ar = new MavenArtifactRepository();
                 }
                 ar.setUrl("file://" + userProps.getProperty("maven.repo.local"));
                 req.setLocalRepository(ar);
-            }
+            }*/
 
             final MavenSession mavenSession = new MavenSession(container, null, req, new DefaultMavenExecutionResult());
 
@@ -209,5 +227,9 @@ public class PmeDependencyCollector {
         effectiveSettings.setActiveProfiles(activeProfiles);
 
         return effectiveSettings;
+    }
+
+    private static ProjectRef toProjectRef(Project project) {
+        return new SimpleProjectRef(project.getGroupId(), project.getArtifactId());
     }
 }

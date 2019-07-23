@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.eclipse.aether.RepositoryException;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
@@ -33,33 +34,28 @@ public class DependencyEvaluator {
      *
      * @return returns map G:A => newVersion
      */
-    public Map<String, String> getVersionsToUpgrade(Collection<String> dependencies) {
-        Map<String, String> versionsToUpgrade = new HashMap<>();
+    public Map<ArtifactRef, String> getVersionsToUpgrade(Collection<ArtifactRef> dependencies) {
+        Map<ArtifactRef, String> versionsToUpgrade = new HashMap<>();
 
-        for (String gav : dependencies) {
-            if (gav.isEmpty()) {
-                continue;
-            }
+        for (ArtifactRef dep : dependencies) {
+            Artifact rangeArtifact = toVersionRangeArtifact(dep);
 
-            Artifact artifact = newArtifact(gav);
-            Artifact rangeArtifact = newVersionRangeArtifact(gav);
-
-            if (artifact.getBaseVersion().startsWith("$")) {
-                LOG.infof("Skipping %s", artifact);
+            if (dep.getVersionString().startsWith("$")) {
+                LOG.infof("Skipping %s", dep);
                 continue;
             }
             try {
                 VersionStream stream =
-                        configuration.getStreamFor(artifact.getGroupId(), artifact.getArtifactId(), MICRO);
+                        configuration.getStreamFor(dep.getGroupId(), dep.getArtifactId(), MICRO);
 
                 List<Version> versions = availableVersionsResolver.resolveVersionRange(rangeArtifact);
-                Optional<Version> latest = VersionUtils.findLatest(stream, artifact.getBaseVersion(), versions);
+                Optional<Version> latest = VersionUtils.findLatest(stream, dep.getVersionString(), versions);
 
-                LOG.infof("Available versions for %s %s: %s", gav, stream, versions);
+                LOG.infof("Available versions for %s %s: %s", dep, stream, versions);
                 if (latest.isPresent()
-                        && !artifact.getBaseVersion().equals(latest.get().toString())) {
+                        && !dep.getVersionString().equals(latest.get().toString())) {
                     LOG.infof("  => %s", latest.get().toString());
-                    versionsToUpgrade.put(artifact.getGroupId() + ":" + artifact.getArtifactId(),
+                    versionsToUpgrade.put(dep,
                             latest.get().toString());
                 } else {
                     LOG.info("  => no change");
@@ -79,12 +75,12 @@ public class DependencyEvaluator {
         return new DefaultArtifact(split[0], split[1], null, split[2]);
     }
 
-    private static Artifact newVersionRangeArtifact(String gav) {
-        String[] split = gav.split(":");
-        if (split.length != 3) {
-            throw new RuntimeException("Invalid GAV: " + gav);
-        }
-        return new DefaultArtifact(split[0], split[1], null, "[" + split[2] + ",)");
+    private static Artifact toArtifact(ArtifactRef ref) {
+        return new DefaultArtifact(ref.getGroupId(), ref.getArtifactId(), null, ref.getVersionString());
+    }
+
+    private static Artifact toVersionRangeArtifact(ArtifactRef ref) {
+        return new DefaultArtifact(ref.getGroupId(), ref.getArtifactId(), null, "[" + ref.getVersionString() + ",)");
     }
 
 }

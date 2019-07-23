@@ -13,8 +13,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.maven</groupId>
-            <artifactId>maven-model</artifactId>
+            <groupId>org.commonjava.maven.atlas</groupId>
+            <artifactId>atlas-identities</artifactId>
         </dependency>
     </dependencies>
 </project>

@@ -1,0 +1,6 @@
+{
+  "streams": {
+    "org.picketlink:*": "QUALIFIER",
+    "org.apache.directory.server:apacheds-all": "QUALIFIER"
+  }
+}

@@ -14,7 +14,9 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.maven.model.Dependency;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
+import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.AvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.BomExporter;
@@ -37,6 +39,7 @@ public class Cli {
             System.exit(new Cli().run(args));
         } catch (Exception e) {
             LOG.error(e);
+            e.printStackTrace(System.err);
             System.exit(1);
         }
     }
@@ -101,13 +104,9 @@ public class Cli {
         AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver();
         DependencyEvaluator updater = new DependencyEvaluator(configuration, availableVersionsResolver);
 
-        Set<ArtifactRef> artifactRefs = new PmeDependencyCollector(pomFile).collectProjectDependencies();
-        Collection<String> dependencies = artifactRefs.stream()
-                .map(ref -> String.format("%s:%s:%s", ref.getGroupId(), ref.getArtifactId(), ref.getVersionString()))
-                .collect(Collectors.toList());
+        Collection<ArtifactRef> rootProjectDependencies = new PmeDependencyCollector(pomFile).getRootProjectDependencies();
 
-
-        Map<String, String> newVersions = updater.getVersionsToUpgrade(dependencies);
+        Map<ArtifactRef, String> newVersions = updater.getVersionsToUpgrade(rootProjectDependencies);
 
         if (bomFile != null) {
             generateUpgradeBom(bomFile, configuration.getBomCoordinates(), newVersions);
@@ -118,7 +117,7 @@ public class Cli {
         return 0;
     }
 
-    private static void generateUpgradeBom(File bomFile, ArtifactRef coordinates, Map<String, String> dependencies)
+    private static void generateUpgradeBom(File bomFile, ArtifactRef coordinates, Map<ArtifactRef, String> dependencies)
             throws IOException {
         BomExporter exporter = new BomExporter(coordinates, dependencies);
         exporter.export(bomFile);
