@@ -1,6 +1,15 @@
 {
-  "streams": {
-    "org.picketlink:*": "QUALIFIER",
-    "org.apache.directory.server:apacheds-all": "QUALIFIER"
+  "rules": {
+    "org.picketlink:*": {
+      "PREFIX": "2.5.5",
+      "QUALIFIER": "SP\\d+"
+    },
+    "javax.enterprise:cdi-api": {
+      "PREFIX": "2.0",
+      "QUALIFIER": ["", "SP\\d+"]
+    },
+    "org.apache.directory.server:apacheds-all": {
+      "STREAM": "QUALIFIER"
+    }
   }
 }

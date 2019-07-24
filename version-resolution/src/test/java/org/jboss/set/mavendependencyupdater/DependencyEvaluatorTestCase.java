@@ -37,7 +37,7 @@ public class DependencyEvaluatorTestCase {
         resolver.setResult("org.picketlink:picketlink-impl",
                 Arrays.asList("1.1.1.SP01", "1.1.1.SP02", "1.1.2.SP01", "1.1.2.SP02")); // SP
         resolver.setResult("org.wildfly:wildfly-core",
-                Arrays.asList("1.1.1", "1.1.2", "1.2.3")); // MICRO
+                Arrays.asList("10.0.0.Beta1", "10.0.0.Beta2", "10.0.1.Beta3")); // prefix "10.0.0" with qualifier "Beta\\d+"
 
         updater = new DependencyEvaluator(configuration, resolver);
     }
@@ -50,12 +50,12 @@ public class DependencyEvaluatorTestCase {
 
         artifactRefs.add(refMessaging = newArtifactRef("org.wildfly", "wildfly-messaging", "1.1.1"));
         artifactRefs.add(refPicketlink = newArtifactRef("org.picketlink", "picketlink-impl", "1.1.1.SP01"));
-        artifactRefs.add(refCore = newArtifactRef("org.wildfly", "wildfly-core", "1.1.1"));
+        artifactRefs.add(refCore = newArtifactRef("org.wildfly", "wildfly-core", "10.0.0.Beta1"));
 
         Map<ArtifactRef, String> upgradedVersions = updater.getVersionsToUpgrade(artifactRefs);
 
         Assert.assertEquals("1.2.0", upgradedVersions.get(refMessaging));
         Assert.assertEquals("1.1.1.SP02", upgradedVersions.get(refPicketlink));
-        Assert.assertEquals("1.1.2", upgradedVersions.get(refCore));
+        Assert.assertEquals("10.0.0.Beta2", upgradedVersions.get(refCore));
     }
 }

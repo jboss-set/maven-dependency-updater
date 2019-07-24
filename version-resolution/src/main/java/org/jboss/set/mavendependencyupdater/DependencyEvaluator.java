@@ -1,13 +1,5 @@
 package org.jboss.set.mavendependencyupdater;
 
-import static org.jboss.set.mavendependencyupdater.VersionStream.MICRO;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.eclipse.aether.RepositoryException;
 import org.eclipse.aether.artifact.Artifact;
@@ -15,7 +7,16 @@ import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.version.Version;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
+import org.jboss.set.mavendependencyupdater.rules.Restriction;
 import org.jboss.set.mavendependencyupdater.utils.VersionUtils;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.jboss.set.mavendependencyupdater.VersionStream.MICRO;
 
 public class DependencyEvaluator {
 
@@ -41,42 +42,33 @@ public class DependencyEvaluator {
             Artifact rangeArtifact = toVersionRangeArtifact(dep);
 
             if (dep.getVersionString().startsWith("$")) {
-                LOG.infof("Skipping %s", dep);
+                LOG.warnf("Skipping '%s', should this be resolved?", dep);
                 continue;
             }
             try {
                 VersionStream stream =
                         configuration.getStreamFor(dep.getGroupId(), dep.getArtifactId(), MICRO);
+                List<Restriction> restrictions =
+                        configuration.getRestrictionsFor(dep.getGroupId(), dep.getArtifactId());
 
                 List<Version> versions = availableVersionsResolver.resolveVersionRange(rangeArtifact);
-                Optional<Version> latest = VersionUtils.findLatest(stream, dep.getVersionString(), versions);
+                Optional<Version> latest =
+                        VersionUtils.findLatest(stream, restrictions, dep.getVersionString(), versions);
 
-                LOG.infof("Available versions for %s %s: %s", dep, stream, versions);
+                LOG.debugf("Available versions for %s %s: %s", dep, stream, versions);
                 if (latest.isPresent()
                         && !dep.getVersionString().equals(latest.get().toString())) {
-                    LOG.infof("  => %s", latest.get().toString());
+                    LOG.infof("Upgrading %s to %s", dep, latest.get().toString());
                     versionsToUpgrade.put(dep,
                             latest.get().toString());
                 } else {
-                    LOG.info("  => no change");
+                    LOG.debugf("  => no change");
                 }
             } catch (RepositoryException e) {
                 LOG.errorf("Could not resolve %s", rangeArtifact.toString());
             }
         }
         return versionsToUpgrade;
-    }
-
-    private static Artifact newArtifact(String gav) {
-        String[] split = gav.split(":");
-        if (split.length != 3) {
-            throw new RuntimeException("Invalid GAV: " + gav);
-        }
-        return new DefaultArtifact(split[0], split[1], null, split[2]);
-    }
-
-    private static Artifact toArtifact(ArtifactRef ref) {
-        return new DefaultArtifact(ref.getGroupId(), ref.getArtifactId(), null, ref.getVersionString());
     }
 
     private static Artifact toVersionRangeArtifact(ArtifactRef ref) {

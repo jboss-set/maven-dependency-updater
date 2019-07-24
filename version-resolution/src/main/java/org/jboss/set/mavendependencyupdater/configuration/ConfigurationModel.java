@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class ConfigurationModel {
 
     @JsonProperty
-    private Map<String, String> streams;
+    private Map<String, Object> rules;
 
     @JsonProperty(value = "bom-coordinates")
     private String bomCoordinates;
@@ -19,7 +19,7 @@ public class ConfigurationModel {
         return bomCoordinates;
     }
 
-    public Map<String, String> getStreams() {
-        return streams;
+    public Map<String, Object> getRules() {
+        return rules;
     }
 }

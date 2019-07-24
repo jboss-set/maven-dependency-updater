@@ -103,6 +103,13 @@
                 <version>${atlasVersion}</version>
             </dependency>
 
+            <!-- Version processing -->
+            <dependency>
+                <groupId>org.jboss.up.depres</groupId>
+                <artifactId>model</artifactId>
+                <version>0.1-SNAPSHOT</version>
+            </dependency>
+
             <!-- Logging -->
             <dependency>
                 <groupId>org.jboss.logging</groupId>

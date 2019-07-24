@@ -96,7 +96,8 @@ public class PmeDependencyCollector {
     }
 
     public PmeDependencyCollector(File pomFile) throws ManipulationException {
-        LOG.infof("Creating collector for project %s", pomFile);
+        LOG.warnf("Creating collector for project %s", pomFile);
+        LOG.errorf("Creating collector for project %s", pomFile);
         createSession(pomFile, null);
         projects = pomIO.parseProject(pomFile);
 
