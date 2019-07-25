@@ -1,12 +1,5 @@
 package org.jboss.set.mavendependencyupdater.cli;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -14,17 +7,21 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.maven.model.Dependency;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
-import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.AvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.BomExporter;
 import org.jboss.set.mavendependencyupdater.DefaultAvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
 import org.jboss.set.mavendependencyupdater.PomDependencyUpdater;
+import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.jboss.set.mavendependencyupdater.projectparser.PmeDependencyCollector;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Map;
 
 public class Cli {
 
@@ -104,7 +101,8 @@ public class Cli {
         AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver();
         DependencyEvaluator updater = new DependencyEvaluator(configuration, availableVersionsResolver);
 
-        Collection<ArtifactRef> rootProjectDependencies = new PmeDependencyCollector(pomFile).getRootProjectDependencies();
+        Collection<ScopedArtifactRef> rootProjectDependencies =
+                new PmeDependencyCollector(pomFile).getRootProjectDependencies();
 
         Map<ArtifactRef, String> newVersions = updater.getVersionsToUpgrade(rootProjectDependencies);
 

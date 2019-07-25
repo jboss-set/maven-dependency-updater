@@ -6,6 +6,7 @@ import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.version.Version;
 import org.jboss.logging.Logger;
+import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
 import org.jboss.set.mavendependencyupdater.utils.VersionUtils;
@@ -35,16 +36,22 @@ public class DependencyEvaluator {
      *
      * @return returns map G:A => newVersion
      */
-    public Map<ArtifactRef, String> getVersionsToUpgrade(Collection<ArtifactRef> dependencies) {
+    public Map<ArtifactRef, String> getVersionsToUpgrade(Collection<ScopedArtifactRef> dependencies) {
         Map<ArtifactRef, String> versionsToUpgrade = new HashMap<>();
 
-        for (ArtifactRef dep : dependencies) {
+        for (ScopedArtifactRef dep : dependencies) {
             Artifact rangeArtifact = toVersionRangeArtifact(dep);
 
             if (dep.getVersionString().startsWith("$")) {
-                LOG.warnf("Skipping '%s', should this be resolved?", dep);
+                LOG.warnf("Skipping dependency '%s', should this be resolved?", dep);
                 continue;
             }
+
+            if (configuration.getIgnoreScopes().contains(dep.getScope())) {
+                LOG.debugf("Skipping dependency '%s', scope '%s' is ignored", dep, dep.getScope());
+                continue;
+            }
+
             try {
                 VersionStream stream =
                         configuration.getStreamFor(dep.getGroupId(), dep.getArtifactId(), MICRO);

@@ -1,5 +1,6 @@
 {
   "bom-coordinates": "test:test:0.1",
+  "ignoreScopes": ["test"],
   "rules": {
     "org.wildfly:wildfly-messaging": {
       "STREAM": "MINOR"

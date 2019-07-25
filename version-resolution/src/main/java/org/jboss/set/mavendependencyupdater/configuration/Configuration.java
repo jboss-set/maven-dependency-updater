@@ -25,6 +25,7 @@ public class Configuration {
     private ArtifactRef bomCoordinates;
     private Map<String, Map<String, VersionStream>> streams = new HashMap<>();
     private Map<String, Map<String, List<Restriction>>> restrictions = new HashMap<>();
+    private List<String> ignoreScopes = new ArrayList<>();
 
     public Configuration(File file) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
@@ -37,6 +38,12 @@ public class Configuration {
             bomCoordinates = SimpleArtifactRef.parse(data.getBomCoordinates());
         } else {
             bomCoordinates = new SimpleArtifactRef("undefined", "undefined", "0.1-SNAPSHOT", null, null);
+        }
+
+
+        // ignored scopes
+        if (data.getIgnoreScopes() != null) {
+            ignoreScopes.addAll(data.getIgnoreScopes());
         }
 
 
@@ -100,6 +107,10 @@ public class Configuration {
 
     public List<Restriction> getRestrictionsFor(String g, String a) {
         return findConfigForGA(restrictions, g, a, Collections.emptyList());
+    }
+
+    public List<String> getIgnoreScopes() {
+        return ignoreScopes;
     }
 
     private void addStreamRule(String ga, VersionStream stream) {

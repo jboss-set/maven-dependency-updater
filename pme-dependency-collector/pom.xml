@@ -12,6 +12,11 @@
     <artifactId>pme-dependency-collector</artifactId>
 
     <dependencies>
+        <dependency>
+            <groupId>${groupId}</groupId>
+            <artifactId>maven-dependency-updater-commons</artifactId>
+        </dependency>
+
         <!--<dependency>
             <groupId>org.commonjava.maven.ext</groupId>
             <artifactId>pom-manipulation-common</artifactId>

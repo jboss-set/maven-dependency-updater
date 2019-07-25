@@ -1,6 +1,7 @@
 package org.jboss.set.mavendependencyupdater;
 
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
+import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.junit.Assert;
 import org.junit.Before;
@@ -16,7 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 
-import static org.jboss.set.mavendependencyupdater.common.AtlasUtils.newArtifactRef;
+import static org.jboss.set.mavendependencyupdater.common.AtlasUtils.newScopedArtifactRef;
 
 public class DependencyEvaluatorTestCase {
 
@@ -38,24 +39,27 @@ public class DependencyEvaluatorTestCase {
                 Arrays.asList("1.1.1.SP01", "1.1.1.SP02", "1.1.2.SP01", "1.1.2.SP02")); // SP
         resolver.setResult("org.wildfly:wildfly-core",
                 Arrays.asList("10.0.0.Beta1", "10.0.0.Beta2", "10.0.1.Beta3")); // prefix "10.0.0" with qualifier "Beta\\d+"
+        resolver.setResult("junit:junit", Arrays.asList("4.8.1", "4.12"));
 
         updater = new DependencyEvaluator(configuration, resolver);
     }
 
     @Test
     public void testGetVersionsToUpgrade() {
-        ArrayList<ArtifactRef> artifactRefs = new ArrayList<>();
+        ArrayList<ScopedArtifactRef> artifactRefs = new ArrayList<>();
 
-        ArtifactRef refMessaging, refCore, refPicketlink;
+        ScopedArtifactRef refMessaging, refCore, refPicketlink, refJunit;
 
-        artifactRefs.add(refMessaging = newArtifactRef("org.wildfly", "wildfly-messaging", "1.1.1"));
-        artifactRefs.add(refPicketlink = newArtifactRef("org.picketlink", "picketlink-impl", "1.1.1.SP01"));
-        artifactRefs.add(refCore = newArtifactRef("org.wildfly", "wildfly-core", "10.0.0.Beta1"));
+        artifactRefs.add(refMessaging = newScopedArtifactRef("org.wildfly", "wildfly-messaging", "1.1.1", "compile"));
+        artifactRefs.add(refPicketlink = newScopedArtifactRef("org.picketlink", "picketlink-impl", "1.1.1.SP01", "compile"));
+        artifactRefs.add(refCore = newScopedArtifactRef("org.wildfly", "wildfly-core", "10.0.0.Beta1", "compile"));
+        artifactRefs.add(refJunit = newScopedArtifactRef("junit", "junit", "4.8", "test"));
 
         Map<ArtifactRef, String> upgradedVersions = updater.getVersionsToUpgrade(artifactRefs);
 
         Assert.assertEquals("1.2.0", upgradedVersions.get(refMessaging));
         Assert.assertEquals("1.1.1.SP02", upgradedVersions.get(refPicketlink));
         Assert.assertEquals("10.0.0.Beta2", upgradedVersions.get(refCore));
+        Assert.assertNull(upgradedVersions.get(refJunit)); // ignored scope
     }
 }

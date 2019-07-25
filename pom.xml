@@ -29,6 +29,12 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>${groupId}</groupId>
+                <artifactId>maven-dependency-updater-commons</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- CLI -->
             <dependency>
                 <groupId>commons-cli</groupId>

@@ -1,9 +1,9 @@
 package org.jboss.set.mavendependencyupdater.projectparser;
 
-import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 import org.commonjava.maven.atlas.ident.ref.SimpleProjectRef;
 import org.commonjava.maven.ext.common.ManipulationException;
+import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -19,11 +19,11 @@ public class PmeDependencyCollectorTestCase {
     @Test
     public void testSimpleProject() throws ManipulationException, URISyntaxException {
         File pomFile = loadResource("simpleProject/pom.xml");
-        Map<ProjectRef, Collection<ArtifactRef>> projectsDeps =
+        Map<ProjectRef, Collection<ScopedArtifactRef>> projectsDeps =
                 new PmeDependencyCollector(pomFile).getAllProjectsDependencies();
-        Collection<ArtifactRef> rootDeps = projectsDeps.values().iterator().next();
+        Collection<ScopedArtifactRef> rootDeps = projectsDeps.values().iterator().next();
 
-        Optional<ArtifactRef> dep = findDependency(rootDeps, "pom-manipulation-common");
+        Optional<ScopedArtifactRef> dep = findDependency(rootDeps, "pom-manipulation-common");
         Assert.assertTrue(dep.isPresent());
         Assert.assertEquals("3.7.1", dep.get().getVersionString());
 
@@ -36,13 +36,13 @@ public class PmeDependencyCollectorTestCase {
     public void testMultiModuleProject() throws ManipulationException, URISyntaxException {
         File pomFile = loadResource("multiModuleProject/pom.xml");
         PmeDependencyCollector collector = new PmeDependencyCollector(pomFile);
-        Map<ProjectRef, Collection<ArtifactRef>> projectsDeps = collector.getAllProjectsDependencies();
+        Map<ProjectRef, Collection<ScopedArtifactRef>> projectsDeps = collector.getAllProjectsDependencies();
         Assert.assertEquals(3, projectsDeps.size());
 
         // root module
-        Collection<ArtifactRef> deps = collector.getRootProjectDependencies();
+        Collection<ScopedArtifactRef> deps = collector.getRootProjectDependencies();
 
-        Optional<ArtifactRef> dep = findDependency(deps, "pom-manipulation-common");
+        Optional<ScopedArtifactRef> dep = findDependency(deps, "pom-manipulation-common");
         Assert.assertTrue(dep.isPresent());
         Assert.assertEquals("3.7.1", dep.get().getVersionString());
 
@@ -75,7 +75,7 @@ public class PmeDependencyCollectorTestCase {
         Assert.assertEquals("1.2", dep.get().getVersionString());
     }
 
-    private Optional<ArtifactRef> findDependency(Collection<ArtifactRef> dependencies, String artifactId) {
+    private Optional<ScopedArtifactRef> findDependency(Collection<ScopedArtifactRef> dependencies, String artifactId) {
         return dependencies.stream().filter(d -> artifactId.equals(d.getArtifactId())).findFirst();
     }
 

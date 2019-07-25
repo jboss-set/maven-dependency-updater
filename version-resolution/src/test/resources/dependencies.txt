@@ -1,3 +1,0 @@
-org.wildfly:wildfly-messaging:1.1.1
-org.picketlink:picketlink-impl:1.1.1.SP01
-org.wildfly:wildfly-core:1.1.1

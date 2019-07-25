@@ -29,6 +29,11 @@ public class ConfigurationTestCase {
     }
 
     @Test
+    public void testIgnoreScopes() {
+        Assert.assertTrue(config.getIgnoreScopes().contains("test"));
+    }
+
+    @Test
     public void testStreams() {
         // fully defined by "org.wildfly:wildfly-messaging"
         Assert.assertEquals(MINOR, config.getStreamFor("org.wildfly", "wildfly-messaging", null));

@@ -1,4 +1,6 @@
 {
+  "ignoreScopes": ["test"],
+
   "rules": {
     "org.picketlink:*": {
       "PREFIX": "2.5.5",

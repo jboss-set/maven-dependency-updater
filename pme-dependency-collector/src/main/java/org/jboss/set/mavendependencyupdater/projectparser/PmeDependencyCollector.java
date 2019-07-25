@@ -1,9 +1,20 @@
 package org.jboss.set.mavendependencyupdater.projectparser;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.repository.MavenArtifactRepository;
-import org.apache.maven.execution.*;
+import org.apache.maven.execution.DefaultMavenExecutionRequest;
+import org.apache.maven.execution.DefaultMavenExecutionResult;
+import org.apache.maven.execution.MavenExecutionRequest;
+import org.apache.maven.execution.MavenExecutionRequestPopulationException;
+import org.apache.maven.execution.MavenExecutionRequestPopulator;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Profile;
 import org.apache.maven.model.profile.DefaultProfileActivationContext;
@@ -15,7 +26,11 @@ import org.apache.maven.settings.building.DefaultSettingsBuildingRequest;
 import org.apache.maven.settings.building.SettingsBuilder;
 import org.apache.maven.settings.building.SettingsBuildingException;
 import org.apache.maven.settings.building.SettingsBuildingResult;
-import org.codehaus.plexus.*;
+import org.codehaus.plexus.DefaultContainerConfiguration;
+import org.codehaus.plexus.DefaultPlexusContainer;
+import org.codehaus.plexus.PlexusConstants;
+import org.codehaus.plexus.PlexusContainer;
+import org.codehaus.plexus.PlexusContainerException;
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectRef;
@@ -25,10 +40,17 @@ import org.commonjava.maven.ext.common.model.Project;
 import org.commonjava.maven.ext.core.ManipulationSession;
 import org.commonjava.maven.ext.io.PomIO;
 import org.jboss.logging.Logger;
+import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
+import org.jboss.set.mavendependencyupdater.common.ident.SimpleScopedArtifactRef;
 
 import java.io.File;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Retrieves information about maven project dependencies.
@@ -48,7 +70,7 @@ public class PmeDependencyCollector {
 
     private List<Project> projects;
 
-    private Map<ProjectRef, Collection<ArtifactRef>> projectsDependencies = new HashMap<>();
+    private Map<ProjectRef, Collection<ScopedArtifactRef>> projectsDependencies = new HashMap<>();
 
     private ProjectRef rootProjectRef;
 
@@ -80,10 +102,10 @@ public class PmeDependencyCollector {
             File pomFile = new File(cmd.getOptionValue('f'));
 
             try {
-                Map<ProjectRef, Collection<ArtifactRef>> projectsDeps =
+                Map<ProjectRef, Collection<ScopedArtifactRef>> projectsDeps =
                         new PmeDependencyCollector(pomFile).getAllProjectsDependencies();
 
-                for (Map.Entry<ProjectRef, Collection<ArtifactRef>> entry: projectsDeps.entrySet()) {
+                for (Map.Entry<ProjectRef, Collection<ScopedArtifactRef>> entry: projectsDeps.entrySet()) {
                     System.out.println(entry.getKey().toString());
                     for (ArtifactRef ref : entry.getValue()) {
                         System.out.println("  " + ref.asProjectVersionRef().toString());
@@ -96,8 +118,7 @@ public class PmeDependencyCollector {
     }
 
     public PmeDependencyCollector(File pomFile) throws ManipulationException {
-        LOG.warnf("Creating collector for project %s", pomFile);
-        LOG.errorf("Creating collector for project %s", pomFile);
+        LOG.debugf("Creating collector for project %s", pomFile);
         createSession(pomFile, null);
         projects = pomIO.parseProject(pomFile);
 
@@ -107,23 +128,23 @@ public class PmeDependencyCollector {
         collectProjectDependencies();
     }
 
-    public Map<ProjectRef, Collection<ArtifactRef>> getAllProjectsDependencies() {
+    public Map<ProjectRef, Collection<ScopedArtifactRef>> getAllProjectsDependencies() {
         // TODO: unmodifiable
         return projectsDependencies;
     }
 
-    public Collection<ArtifactRef> getProjectDependencies(String groupId, String artifactId) {
+    public Collection<ScopedArtifactRef> getProjectDependencies(String groupId, String artifactId) {
         // TODO: unmodifiable
         return projectsDependencies.get(new SimpleProjectRef(groupId, artifactId));
     }
 
-    public Collection<ArtifactRef> getRootProjectDependencies() {
+    public Collection<ScopedArtifactRef> getRootProjectDependencies() {
         return projectsDependencies.get(rootProjectRef);
     }
 
     private void collectProjectDependencies() throws ManipulationException {
         for (Project project:  projects) {
-            Collection<ArtifactRef> dependencies = new HashSet<>();
+            Collection<ScopedArtifactRef> dependencies = new HashSet<>();
             projectsDependencies.put(toProjectRef(project), dependencies);
 
             collectDependencies(dependencies, project.getResolvedManagedDependencies(session));
@@ -131,10 +152,14 @@ public class PmeDependencyCollector {
         }
     }
 
-    private void collectDependencies(Collection<ArtifactRef> collectTo, Map<ArtifactRef, Dependency> dependencies) {
-        collectTo.addAll(dependencies.keySet().stream()
-                .filter(ref -> !ref.getVersionString().contains("&"))
-                .collect(Collectors.toList()));
+    private void collectDependencies(Collection<ScopedArtifactRef> collectTo, Map<ArtifactRef, Dependency> dependencies) {
+        for (Map.Entry<ArtifactRef, Dependency> entry: dependencies.entrySet()) {
+            ArtifactRef ref = entry.getKey();
+            Dependency dep = entry.getValue();
+            if (!ref.getVersionString().contains("&")) {
+                collectTo.add(new SimpleScopedArtifactRef(ref, dep.getScope()));
+            }
+        }
     }
 
     private void createSession(File target, File settings) {
