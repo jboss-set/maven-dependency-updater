@@ -48,4 +48,8 @@ public class VersionPrefixRestriction implements Restriction {
         }
         return true;
     }
+
+    public String getPrefixString() {
+        return prefixString;
+    }
 }

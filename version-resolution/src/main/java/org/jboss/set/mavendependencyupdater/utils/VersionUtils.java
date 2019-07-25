@@ -1,14 +1,7 @@
 package org.jboss.set.mavendependencyupdater.utils;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
-
 import org.commonjava.maven.ext.core.impl.Version;
 import org.jboss.set.mavendependencyupdater.VersionStream;
-import org.jboss.set.mavendependencyupdater.rules.Restriction;
-import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
 
 public class VersionUtils {
 
@@ -43,33 +36,4 @@ public class VersionUtils {
         return true;
     }
 
-    /**
-     * Searches given list of available versions for the latest version in given stream.
-     *
-     * @param stream the highest segment of the version that is allowed to change.
-     *               This parameter is ignored if `restrictions` list contains `VersionPrefixRestriction`.
-     * @param restrictions list of restrictions that versions must satisfy.
-     *                     If `VersionPrefixRestriction` is present, `stream` parameter is ignored.
-     * @param originalVersion original artifact version.
-     * @param availableVersions available versions.
-     * @return latest available version in given stream.
-     */
-    public static Optional<org.eclipse.aether.version.Version> findLatest(VersionStream stream,
-                                                                          List<Restriction> restrictions,
-                                                                          String originalVersion,
-                                                                          List<org.eclipse.aether.version.Version> availableVersions) {
-        boolean restrictedPrefix = restrictions.stream().anyMatch(r -> r instanceof VersionPrefixRestriction);
-
-        Stream<org.eclipse.aether.version.Version> workingStream = availableVersions.stream();
-
-        if (!restrictedPrefix && !VersionStream.ANY.equals(stream)) { // don't filter by stream if prefix restriction is present
-            workingStream = workingStream.filter(v -> equalMmm(originalVersion, v.toString(), stream.higher()));
-        }
-
-        for (Restriction restriction: restrictions) {
-            workingStream = workingStream.filter(v -> restriction.applies(v.toString()));
-        }
-
-        return workingStream.max(Comparator.naturalOrder());
-    }
 }
