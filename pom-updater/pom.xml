@@ -9,13 +9,12 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>versions-plugin-pom-updater</artifactId>
+    <artifactId>pom-updater</artifactId>
 
     <dependencies>
         <dependency>
-            <groupId>${groupId}</groupId>
-            <artifactId>maven-dependency-updater-commons</artifactId>
-            <version>${project.version}</version>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>commons</artifactId>
         </dependency>
 
         <dependency>

@@ -11,53 +11,101 @@
 
     <artifactId>dependency-collector</artifactId>
 
-
     <dependencies>
         <dependency>
-            <groupId>${groupId}</groupId>
-            <artifactId>maven-dependency-updater-commons</artifactId>
-            <version>${project.version}</version>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>commons</artifactId>
         </dependency>
 
-        <!--
+        <!--<dependency>
+            <groupId>org.commonjava.maven.ext</groupId>
+            <artifactId>pom-manipulation-common</artifactId>
+        </dependency>-->
         <dependency>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>versions-maven-plugin</artifactId>
-            <version>2.7</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>*</artifactId>
-                    <groupId>*</groupId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.commonjava.maven.ext</groupId>
+            <artifactId>pom-manipulation-core</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.codehaus.woodstox</groupId>
-            <artifactId>woodstox-core-asl</artifactId>
-            <version>4.2.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.codehaus.plexus</groupId>
-            <artifactId>plexus-utils</artifactId>
-            <version>3.0.24</version>
-        </dependency>
-        -->
+        <!--<dependency>
+            <groupId>org.commonjava.maven.ext</groupId>
+            <artifactId>pom-manipulation-io</artifactId>
+        </dependency>-->
 
+<!--        TODO: remove cli-->
+        <dependency>
+            <groupId>commons-cli</groupId>
+            <artifactId>commons-cli</artifactId>
+            <version>1.4</version>
+        </dependency>
+        <!--<dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.6</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.6</version>
+        </dependency>-->
+
+        <!--<dependency>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-artifact</artifactId>
+        </dependency>-->
         <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.maven</groupId>
-            <artifactId>maven-model</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.maven</groupId>
-            <artifactId>maven-artifact</artifactId>
+            <artifactId>maven-compat</artifactId>
         </dependency>
         <!--<dependency>
             <groupId>org.apache.maven</groupId>
-            <artifactId>maven-compat</artifactId>
+            <artifactId>maven-model-builder</artifactId>
+            <version>${mavenVersion}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-model</artifactId>
+            <version>${mavenVersion}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-settings</artifactId>
+            <version>${mavenVersion}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-settings-builder</artifactId>
+            <version>${mavenVersion}</version>
+        </dependency>-->
+
+        <!--<dependency>
+            <groupId>org.codehaus.plexus</groupId>
+            <artifactId>plexus-interpolation</artifactId>
+            <version>1.24</version>
+        </dependency>-->
+
+        <!--<dependency>
+            <groupId>org.commonjava.maven.atlas</groupId>
+            <artifactId>atlas-identities</artifactId>
+            <version>${atlasVersion}</version>
+        </dependency>-->
+
+        <dependency>
+            <groupId>org.eclipse.aether</groupId>
+            <artifactId>aether-api</artifactId>
+        </dependency>
+        <!--<dependency>
+            <groupId>org.eclipse.sisu</groupId>
+            <artifactId>org.eclipse.sisu.plexus</artifactId>
+            <version>0.3.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+            <classifier>no_aop</classifier>
+            <version>4.0</version>
         </dependency>-->
     </dependencies>
 

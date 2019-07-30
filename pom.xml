@@ -21,17 +21,16 @@
     <modules>
         <module>version-resolution</module>
         <module>cli</module>
-        <module>pme-dependency-collector</module>
-        <module>versions-plugin-pom-updater</module>
-        <module>commons</module>
         <module>dependency-collector</module>
+        <module>pom-updater</module>
+        <module>commons</module>
     </modules>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>${groupId}</groupId>
-                <artifactId>maven-dependency-updater-commons</artifactId>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>commons</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -142,7 +141,6 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 
