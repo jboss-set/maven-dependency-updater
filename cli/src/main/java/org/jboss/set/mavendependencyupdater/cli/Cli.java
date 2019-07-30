@@ -16,6 +16,7 @@ import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
 import org.jboss.set.mavendependencyupdater.PomDependencyUpdater;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
+import org.jboss.set.mavendependencyupdater.configuration.ConfigurationGenerator;
 import org.jboss.set.mavendependencyupdater.projectparser.PmeDependencyCollector;
 
 import java.io.File;
@@ -27,9 +28,11 @@ public class Cli {
 
     private static final Logger LOG = Logger.getLogger(Cli.class);
 
-    private Configuration configuration;
-    private File bomFile;
-    private File pomFile;
+    private static final String ALIGN = "align";
+    private static final String GENERATE_CONFIG = "generate-config";
+
+    private Options options;
+    private CommandLineParser parser = new DefaultParser();
 
     public static void main(String[] args) {
         try {
@@ -41,8 +44,8 @@ public class Cli {
         }
     }
 
-    private int run(String[] args) throws Exception {
-        Options options = new Options();
+    public Cli() {
+        options = new Options();
         options.addOption(Option.builder("h").longOpt("help").desc("Print help").build());
         options.addOption(Option.builder("c")
                 .longOpt("config")
@@ -51,20 +54,16 @@ public class Cli {
                 .numberOfArgs(1)
                 .desc("Configuration JSON file")
                 .build());
-        options.addOption(Option.builder("b")
-                .longOpt("bom")
-                .hasArgs()
-                .numberOfArgs(1)
-                .desc("BOM file with upgraded dependencies to be generated")
-                .build());
         options.addOption(Option.builder("f")
                 .longOpt("file")
+                .required()
                 .hasArgs()
                 .numberOfArgs(1)
-                .desc("POM file to be upgraded")
+                .desc("POM file")
                 .build());
+    }
 
-        CommandLineParser parser = new DefaultParser();
+    private int run(String[] args) throws Exception {
         CommandLine cmd;
         try {
             cmd = parser.parse(options, args);
@@ -72,44 +71,41 @@ public class Cli {
             LOG.debug("Caught problem parsing CLI arguments", e);
             System.err.println(e.getMessage());
 
-            HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp("...", options);
+            printHelp();
             return 10;
         }
 
         if (cmd.hasOption('h')) {
-            HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp("...", options);
+            printHelp();
             return 0;
         }
-        if (cmd.hasOption('c')) {
-            File configurationFile = new File(cmd.getOptionValue('c'));
-            configuration = new Configuration(configurationFile);
-        }
-        if (cmd.hasOption('b')) {
-            bomFile = new File(cmd.getOptionValue('b'));
-        }
-        if (cmd.hasOption('f')) {
-            pomFile = new File(cmd.getOptionValue('f'));
+
+        String[] arguments = cmd.getArgs();
+        if (arguments.length != 1) {
+            System.err.println("Single action argument expected.");
+            printHelp();
+            return 10;
         }
 
-        if (bomFile == null && pomFile == null) {
-            System.err.println("Either `bom` or `file` switch must be set.");
-            return 1;
-        }
+        File configurationFile = new File(cmd.getOptionValue('c'));
+        File pomFile = new File(cmd.getOptionValue('f'));
 
-        AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver();
-        DependencyEvaluator updater = new DependencyEvaluator(configuration, availableVersionsResolver);
 
         Collection<ScopedArtifactRef> rootProjectDependencies =
                 new PmeDependencyCollector(pomFile).getRootProjectDependencies();
 
-        Map<ArtifactRef, String> newVersions = updater.getVersionsToUpgrade(rootProjectDependencies);
-
-        if (bomFile != null) {
-            generateUpgradeBom(bomFile, configuration.getBomCoordinates(), newVersions);
-        } else if (pomFile != null) {
+        if (ALIGN.equals(arguments[0])) {
+            Configuration configuration = new Configuration(configurationFile);
+            AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver();
+            DependencyEvaluator updater = new DependencyEvaluator(configuration, availableVersionsResolver);
+            Map<ArtifactRef, String> newVersions = updater.getVersionsToUpgrade(rootProjectDependencies);
             PomDependencyUpdater.upgradeDependencies(pomFile, newVersions);
+        } else if (GENERATE_CONFIG.equals(arguments[0])) {
+            new ConfigurationGenerator().generateDefautlConfig(configurationFile, rootProjectDependencies);
+        } else {
+            System.err.println("Unknown action: " + arguments[0]);
+            printHelp();
+            return 10;
         }
 
         return 0;
@@ -119,6 +115,17 @@ public class Cli {
             throws IOException {
         BomExporter exporter = new BomExporter(coordinates, dependencies);
         exporter.export(bomFile);
+    }
+
+    private void printHelp() {
+        String header = "\nCommand is one of:\n\n" +
+                "  align              Align dependencies in specified POM file\n" +
+                "  generate-config    Generate basic dependency alignment configuration for\n" +
+                "                     specified POM\n" +
+                "\n";
+
+        HelpFormatter formatter = new HelpFormatter();
+        formatter.printHelp("java -jar <path/to/updater.jar> <command> <args>", header, options, "");
     }
 
 }

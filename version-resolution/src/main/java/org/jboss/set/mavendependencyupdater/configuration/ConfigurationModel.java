@@ -7,6 +7,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class ConfigurationModel {
 
+    public static final String IGNORE_SCOPES = "ignoreScopes";
+    public static final String RULES = "rules";
+
     @JsonProperty
     private Map<String, Object> rules;
 

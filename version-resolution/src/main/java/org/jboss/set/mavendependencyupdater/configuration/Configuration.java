@@ -1,16 +1,21 @@
 package org.jboss.set.mavendependencyupdater.configuration;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
 import org.jboss.set.mavendependencyupdater.VersionStream;
+import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.QualifierRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
 import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Provides app configuration.
@@ -18,9 +23,11 @@ import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
 public class Configuration {
 
     private static final String WILDCARD = "*";
-    private static final String QUALIFIER = "QUALIFIER";
-    private static final String PREFIX = "PREFIX";
-    private static final String STREAM = "STREAM";
+    public static final String QUALIFIER = "QUALIFIER";
+    public static final String PREFIX = "PREFIX";
+    public static final String STREAM = "STREAM";
+    public static final String COMMENT = "COMMENT";
+    public static final String NEVER = "NEVER";
 
     private ArtifactRef bomCoordinates;
     private Map<String, Map<String, VersionStream>> streams = new HashMap<>();
@@ -52,8 +59,13 @@ public class Configuration {
         for (Map.Entry<String, Object> gaEntry : data.getRules().entrySet()) {
             String ga = gaEntry.getKey();
             if (gaEntry.getValue() instanceof String) {
-                // if only string is provided, consider it VersionStream value
-                addStreamRule(ga, VersionStream.valueOf((String) gaEntry.getValue()));
+                if (NEVER.equals(gaEntry.getValue())) {
+                    // if value is string, it can either be NEVER
+                    addRestriction(ga, NeverRestriction.INSTANCE); // never upgrade
+                } else {
+                    // or else consider it VersionStream value
+                    addStreamRule(ga, VersionStream.valueOf((String) gaEntry.getValue()));
+                }
             } else if (gaEntry.getValue() instanceof Map) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> configMap = (Map<String, Object>) gaEntry.getValue();
@@ -88,6 +100,9 @@ public class Configuration {
                                         ga, STREAM));
                             }
                             addStreamRule(ga, VersionStream.valueOf((String) restrictionObject));
+                            break;
+                        case COMMENT:
+                            // ignore
                             break;
                         default:
                             throw new IllegalArgumentException("Unknown rule: " + restrictionEntry.getKey());
