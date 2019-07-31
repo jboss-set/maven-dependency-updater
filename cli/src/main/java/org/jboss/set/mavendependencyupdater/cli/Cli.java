@@ -12,7 +12,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.AvailableVersionsResolver;
-import org.jboss.set.mavendependencyupdater.BomExporter;
 import org.jboss.set.mavendependencyupdater.DefaultAvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
 import org.jboss.set.mavendependencyupdater.PomDependencyUpdater;
@@ -22,7 +21,6 @@ import org.jboss.set.mavendependencyupdater.configuration.ConfigurationGenerator
 import org.jboss.set.mavendependencyupdater.projectparser.PmeDependencyCollector;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
 
@@ -135,12 +133,6 @@ public class Cli {
         }
 
         return 0;
-    }
-
-    private static void generateUpgradeBom(File bomFile, ArtifactRef coordinates, Map<ArtifactRef, String> dependencies)
-            throws IOException {
-        BomExporter exporter = new BomExporter(coordinates, dependencies);
-        exporter.export(bomFile);
     }
 
     private void printHelp() {

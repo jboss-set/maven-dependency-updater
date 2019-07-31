@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
+import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.rules.Version;
 
@@ -12,8 +13,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -22,11 +23,16 @@ import static org.apache.commons.lang3.StringUtils.isEmpty;
 
 public class ConfigurationGenerator {
 
+    private static final Logger LOG = Logger.getLogger(ConfigurationGenerator.class);
+
     private static final String ORIGINAL_VERSION_COMMENT = "Original version ";
 
+    @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
+    private static final List<String> IGNORE_SCOPES = Arrays.asList("test");
+
     public void generateDefautlConfig(File configurationFile, Collection<ScopedArtifactRef> dependencies) throws IOException {
-        HashMap<String, Object> map = new HashMap<>();
-        map.put(ConfigurationModel.IGNORE_SCOPES, Collections.emptyList());
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put(ConfigurationModel.IGNORE_SCOPES, IGNORE_SCOPES);
         map.put(ConfigurationModel.RULES, generateRules(dependencies));
 
         ObjectMapper mapper = new ObjectMapper();
@@ -34,12 +40,14 @@ public class ConfigurationGenerator {
         writer.writeValue(configurationFile, map);
     }
 
-    private HashMap<String, Map<String, Object>> generateRules(Collection<ScopedArtifactRef> dependencies) {
-        HashMap<String, Map<String, Object>> rules = new HashMap<>();
+    private Map<String, Map<String, Object>> generateRules(Collection<ScopedArtifactRef> dependencies) {
+        Map<String, Map<String, Object>> rules = new LinkedHashMap<>();
         dependencies.stream().sorted().forEach(dep -> {
-            Map<String, Object> rule = ruleFromVersion(dep);
-            if (rule != null) {
-                rules.put(dep.getGroupId() + ":" + dep.getArtifactId(), rule);
+            if (!IGNORE_SCOPES.contains(dep.getScope())) {
+                Map<String, Object> rule = ruleFromVersion(dep);
+                if (rule != null) {
+                    rules.put(dep.getGroupId() + ":" + dep.getArtifactId(), rule);
+                }
             }
         });
         return rules;
@@ -59,10 +67,10 @@ public class ConfigurationGenerator {
                 return latestWithQualifier(v, "GA");
             }
             if (matches(q, "Final-jbossorg-\\d+")) {
-                return latestWithQualifier(v, "Final-jbossorg-\\d+");
+                return latestWithQualifier(v, "Final", "Final-jbossorg-\\d+");
             }
             if (matches(q, "jbossorg-\\d+")) {
-                return latestWithQualifier(v, "jbossorg-\\d+");
+                return latestWithQualifier(v, "", "jbossorg-\\d+");
             }
             if (matches(q, "RC\\d+")) {
                 return latestWithQualifier(v, "RC\\d+", "Final", "");
@@ -77,12 +85,7 @@ public class ConfigurationGenerator {
             if (matches(q, milestonePattern)) { // milestone
                 return prefixAndQualifier(v, milestonePattern);
             }
-            if (q.endsWith("-SNAPSHOT")) {
-                // ignore dependency
-                return null;
-            }
-            System.out.println("Unknown qualifier: " + ref);
-            return latest(v);
+            LOG.warnf("Not sure what to do with qualifier: " + ref);
         }
         return latest(v);
     }

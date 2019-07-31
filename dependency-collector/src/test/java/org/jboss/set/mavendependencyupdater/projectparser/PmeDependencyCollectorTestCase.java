@@ -41,6 +41,7 @@ public class PmeDependencyCollectorTestCase {
 
         // root module
         Collection<ScopedArtifactRef> deps = collector.getRootProjectDependencies();
+        Assert.assertEquals(2, deps.size());
 
         Optional<ScopedArtifactRef> dep = findDependency(deps, "pom-manipulation-common");
         Assert.assertTrue(dep.isPresent());
@@ -52,12 +53,7 @@ public class PmeDependencyCollectorTestCase {
 
         // submodule1
         deps = projectsDeps.get(new SimpleProjectRef("org.jboss.set", "submodule1"));
-
-        dep = findDependency(deps, "pom-manipulation-common");
-        Assert.assertFalse(dep.isPresent());
-
-        dep = findDependency(deps, "commons-cli");
-        Assert.assertFalse(dep.isPresent());
+        Assert.assertEquals(1, deps.size());
 
         dep = findDependency(deps, "commons-text");
         Assert.assertTrue(dep.isPresent());
@@ -65,6 +61,7 @@ public class PmeDependencyCollectorTestCase {
 
         // submodule2
         deps = projectsDeps.get(new SimpleProjectRef("org.jboss.set", "submodule2"));
+        Assert.assertEquals(2, deps.size());
 
         dep = findDependency(deps, "commons-cli");
         Assert.assertTrue(dep.isPresent());

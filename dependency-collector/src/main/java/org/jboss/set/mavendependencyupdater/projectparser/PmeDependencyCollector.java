@@ -1,12 +1,5 @@
 package org.jboss.set.mavendependencyupdater.projectparser;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.repository.MavenArtifactRepository;
 import org.apache.maven.execution.DefaultMavenExecutionRequest;
@@ -34,6 +27,7 @@ import org.codehaus.plexus.PlexusContainerException;
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectRef;
+import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.SimpleProjectRef;
 import org.commonjava.maven.ext.common.ManipulationException;
 import org.commonjava.maven.ext.common.model.Project;
@@ -51,6 +45,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Retrieves information about maven project dependencies.
@@ -68,59 +63,28 @@ public class PmeDependencyCollector {
 
     private PlexusContainer container;
 
+    /**
+     * List of modules this project is composed of.
+     */
     private List<Project> projects;
+
+    /**
+     * Same as above, but converted to ArtifactRef instances.
+     */
+    private List<ArtifactRef> projectArtifacts;
 
     private Map<ProjectRef, Collection<ScopedArtifactRef>> projectsDependencies = new HashMap<>();
 
     private ProjectRef rootProjectRef;
 
-    /**
-     * @deprecated
-     */
-    public static void main(String[] args) {
-        Options options = new Options();
-        options.addOption(Option.builder("f")
-                .longOpt("file")
-                .hasArgs()
-                .numberOfArgs(1)
-                .required()
-                .desc("POM file")
-                .build());
-        CommandLineParser parser = new DefaultParser();
-        CommandLine cmd;
-        try {
-            cmd = parser.parse(options, args);
-        } catch (ParseException e) {
-            LOG.debug("Caught problem parsing ", e);
-
-            HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp("...", options);
-            return;
-        }
-
-        if (cmd.hasOption('f')) {
-            File pomFile = new File(cmd.getOptionValue('f'));
-
-            try {
-                Map<ProjectRef, Collection<ScopedArtifactRef>> projectsDeps =
-                        new PmeDependencyCollector(pomFile).getAllProjectsDependencies();
-
-                for (Map.Entry<ProjectRef, Collection<ScopedArtifactRef>> entry: projectsDeps.entrySet()) {
-                    System.out.println(entry.getKey().toString());
-                    for (ArtifactRef ref : entry.getValue()) {
-                        System.out.println("  " + ref.asProjectVersionRef().toString());
-                    }
-                }
-            } catch (ManipulationException e) {
-                LOG.error("Project evaluation failed", e);
-            }
-        }
-    }
-
     public PmeDependencyCollector(File pomFile) throws ManipulationException {
         LOG.debugf("Creating collector for project %s", pomFile);
         createSession(pomFile, null);
+
         projects = pomIO.parseProject(pomFile);
+        projectArtifacts = projects.stream()
+                .map(PmeDependencyCollector::toArtifactRef)
+                .collect(Collectors.toList());
 
         Project rootProject = projects.stream().filter(Project::isInheritanceRoot).findFirst().get();
         rootProjectRef = toProjectRef(rootProject);
@@ -149,6 +113,8 @@ public class PmeDependencyCollector {
 
             collectDependencies(dependencies, project.getResolvedManagedDependencies(session));
             collectDependencies(dependencies, project.getResolvedDependencies(session));
+            //noinspection SuspiciousMethodCalls
+            dependencies.removeAll(projectArtifacts); // remove internal project dependencies
         }
     }
 
@@ -257,5 +223,9 @@ public class PmeDependencyCollector {
 
     private static ProjectRef toProjectRef(Project project) {
         return new SimpleProjectRef(project.getGroupId(), project.getArtifactId());
+    }
+
+    private static ArtifactRef toArtifactRef(Project project) {
+        return new SimpleArtifactRef(project.getGroupId(), project.getArtifactId(), project.getVersion(), null, null);
     }
 }

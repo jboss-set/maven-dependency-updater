@@ -13,6 +13,12 @@
     <packaging>pom</packaging>
 
     <dependencies>
+        <!-- dependency from this project -->
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>submodule1</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- different version than in parent -->
         <dependency>
