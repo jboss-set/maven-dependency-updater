@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.jboss.logging.Logger;
+import org.jboss.set.mavendependencyupdater.VersionStream;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.rules.Version;
 
@@ -25,10 +26,24 @@ public class ConfigurationGenerator {
 
     private static final Logger LOG = Logger.getLogger(ConfigurationGenerator.class);
 
-    private static final String ORIGINAL_VERSION_COMMENT = "Original version ";
+    private static final String ORIGINAL_VERSION_COMMENT = "Auto-generated from version ";
 
     @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
     private static final List<String> IGNORE_SCOPES = Arrays.asList("test");
+
+    private static final String[] DEFAULT_QUALIFIERS = {
+            "",
+            "Final",
+            "final",
+            "Final-jbossorg-\\d+",
+            "final-jbossorg-\\d+",
+            "GA"
+    };
+
+    private static final Map<String, Object> DEFAULT_RULE = new RuleBuilder()
+            .stream(VersionStream.MICRO)
+            .qualifier(DEFAULT_QUALIFIERS)
+            .build();
 
     public void generateDefautlConfig(File configurationFile, Collection<ScopedArtifactRef> dependencies) throws IOException {
         Map<String, Object> map = new LinkedHashMap<>();
@@ -42,6 +57,7 @@ public class ConfigurationGenerator {
 
     private Map<String, Map<String, Object>> generateRules(Collection<ScopedArtifactRef> dependencies) {
         Map<String, Map<String, Object>> rules = new LinkedHashMap<>();
+        rules.put("*:*", DEFAULT_RULE);
         dependencies.stream().sorted().forEach(dep -> {
             if (!IGNORE_SCOPES.contains(dep.getScope())) {
                 Map<String, Object> rule = ruleFromVersion(dep);
@@ -58,19 +74,22 @@ public class ConfigurationGenerator {
         String q = v.getQualifier();
         if (!isEmpty(q)) {
             if (q.equals("Final")) {
-                return latestWithQualifier(v, "Final");
+//                return latestWithQualifier(v, "Final");
+                return null;
             }
             if (q.equals("final")) {
-                return latestWithQualifier(v, "final");
+//                return latestWithQualifier(v, "final");
+                return null;
             }
             if (q.equals("GA")) {
-                return latestWithQualifier(v, "GA");
+//                return latestWithQualifier(v, "GA");
+                return null;
             }
             if (matches(q, "Final-jbossorg-\\d+")) {
-                return latestWithQualifier(v, "Final", "Final-jbossorg-\\d+");
+                return latestWithQualifier(v, "Final-jbossorg-\\d+");
             }
             if (matches(q, "jbossorg-\\d+")) {
-                return latestWithQualifier(v, "", "jbossorg-\\d+");
+                return latestWithQualifier(v, "jbossorg-\\d+");
             }
             if (matches(q, "RC\\d+")) {
                 return latestWithQualifier(v, "RC\\d+", "Final", "");
@@ -85,19 +104,36 @@ public class ConfigurationGenerator {
             if (matches(q, milestonePattern)) { // milestone
                 return prefixAndQualifier(v, milestonePattern);
             }
-            LOG.warnf("Not sure what to do with qualifier: " + ref);
+            LOG.warnf("Not sure what rule to assign to this qualifier: " + ref);
+            return null;
         }
-        return latest(v);
+//        return latest(v);
+        return null;
     }
 
     private boolean matches(String str, String regex) {
         return Pattern.compile(regex).matcher(str).matches();
     }
 
+    /**
+     * Creates prefix rule containing all leading numerical segments of the original version, plus qualifier must be
+     * a service pack number ("SP" + number).
+     *
+     * @param version original version
+     * @return rule definition
+     */
     private Map<String, Object> latestSP(Version version) {
         return prefixAndQualifier(version, "SP\\d+");
     }
 
+    /**
+     * Creates prefix rule containing all leading numerical segments of the original version, plus qualifier must match
+     * given pattern.
+     *
+     * @param version original version
+     * @param qualifier regular expression pattern
+     * @return rule definition
+     */
     private Map<String, Object> prefixAndQualifier(Version version, String qualifier) {
         int numericalSegments = version.getNumericalSegments().length;
         return new RuleBuilder()
@@ -107,6 +143,13 @@ public class ConfigurationGenerator {
                 .build();
     }
 
+    /**
+     * Same as {@link #latest}, plus qualifier must match one of patterns.
+     *
+     * @param version original version
+     * @param qualifiers regular expression patterns
+     * @return rule definition
+     */
     private Map<String, Object> latestWithQualifier(Version version, String... qualifiers) {
         int numericalSegments = version.getNumericalSegments().length;
         return new RuleBuilder()
@@ -116,6 +159,19 @@ public class ConfigurationGenerator {
                 .build();
     }
 
+    /**
+     * Creates prefix rule containing one less numerical segment than the original version:
+     *
+     * 1.2.3 => prefix "1.2"
+     * 1.2.3.4 => prefix "1.2.3"
+     *
+     * At least two segments are used though:
+     *
+     * 1.2 => prefix "1.2"
+     *
+     * @param version original version
+     * @return rule definition
+     */
     private Map<String, Object> latest(Version version) {
         int numericalSegments = version.getNumericalSegments().length;
         return new RuleBuilder()
@@ -126,6 +182,7 @@ public class ConfigurationGenerator {
 
     private static class RuleBuilder {
         private String prefix;
+        private String stream;
         private List<String> qualifiers = new ArrayList<>();
         private String comment;
 
@@ -139,6 +196,11 @@ public class ConfigurationGenerator {
             return this;
         }
 
+        RuleBuilder stream(VersionStream stream) {
+            this.stream = stream.name();
+            return this;
+        }
+
         RuleBuilder comment(String comment) {
             this.comment = comment;
             return this;
@@ -149,6 +211,10 @@ public class ConfigurationGenerator {
 
             if (prefix != null) {
                 rule.put(Configuration.PREFIX, prefix);
+            }
+
+            if (stream != null) {
+                rule.put(Configuration.STREAM, stream);
             }
 
             if (qualifiers.size() == 1) {

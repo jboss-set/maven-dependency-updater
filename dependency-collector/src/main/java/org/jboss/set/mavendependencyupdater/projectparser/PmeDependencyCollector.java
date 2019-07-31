@@ -27,8 +27,10 @@ import org.codehaus.plexus.PlexusContainerException;
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectRef;
+import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
 import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.SimpleProjectRef;
+import org.commonjava.maven.atlas.ident.ref.SimpleProjectVersionRef;
 import org.commonjava.maven.ext.common.ManipulationException;
 import org.commonjava.maven.ext.common.model.Project;
 import org.commonjava.maven.ext.core.ManipulationSession;
@@ -69,9 +71,9 @@ public class PmeDependencyCollector {
     private List<Project> projects;
 
     /**
-     * Same as above, but converted to ArtifactRef instances.
+     * Same as above, but converted to ProjectVersionRef instances.
      */
-    private List<ArtifactRef> projectArtifacts;
+    private List<ProjectVersionRef> projectRefs;
 
     private Map<ProjectRef, Collection<ScopedArtifactRef>> projectsDependencies = new HashMap<>();
 
@@ -82,8 +84,8 @@ public class PmeDependencyCollector {
         createSession(pomFile, null);
 
         projects = pomIO.parseProject(pomFile);
-        projectArtifacts = projects.stream()
-                .map(PmeDependencyCollector::toArtifactRef)
+        projectRefs = projects.stream()
+                .map(PmeDependencyCollector::toProjectVersionRef)
                 .collect(Collectors.toList());
 
         Project rootProject = projects.stream().filter(Project::isInheritanceRoot).findFirst().get();
@@ -113,8 +115,6 @@ public class PmeDependencyCollector {
 
             collectDependencies(dependencies, project.getResolvedManagedDependencies(session));
             collectDependencies(dependencies, project.getResolvedDependencies(session));
-            //noinspection SuspiciousMethodCalls
-            dependencies.removeAll(projectArtifacts); // remove internal project dependencies
         }
     }
 
@@ -122,9 +122,13 @@ public class PmeDependencyCollector {
         for (Map.Entry<ArtifactRef, Dependency> entry: dependencies.entrySet()) {
             ArtifactRef ref = entry.getKey();
             Dependency dep = entry.getValue();
-            if (!ref.getVersionString().contains("&")) {
-                collectTo.add(new SimpleScopedArtifactRef(ref, dep.getScope()));
+            if (projectRefs.contains(ref.asProjectVersionRef())) { // remove internal project dependencies
+                continue;
             }
+            if (ref.getVersionString().contains("&")) { // remove unresolved dependencies
+                continue;
+            }
+            collectTo.add(new SimpleScopedArtifactRef(ref, dep.getScope()));
         }
     }
 
@@ -227,5 +231,9 @@ public class PmeDependencyCollector {
 
     private static ArtifactRef toArtifactRef(Project project) {
         return new SimpleArtifactRef(project.getGroupId(), project.getArtifactId(), project.getVersion(), null, null);
+    }
+
+    private static ProjectVersionRef toProjectVersionRef(Project project) {
+        return new SimpleProjectVersionRef(project.getGroupId(), project.getArtifactId(), project.getVersion());
     }
 }
