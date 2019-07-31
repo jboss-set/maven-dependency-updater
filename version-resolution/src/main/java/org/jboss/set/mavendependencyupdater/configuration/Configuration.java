@@ -1,9 +1,11 @@
 package org.jboss.set.mavendependencyupdater.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.tuple.Pair;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
 import org.jboss.set.mavendependencyupdater.VersionStream;
+import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.QualifierRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
@@ -12,10 +14,13 @@ import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Provides app configuration.
@@ -124,8 +129,35 @@ public class Configuration {
         return findConfigForGA(restrictions, g, a, Collections.emptyList());
     }
 
+    public <T extends Restriction> Optional<T> getRestrictionFor(String g, String a, Class<T> restrictionClass) {
+        List<Restriction> restrictions = findConfigForGA(this.restrictions, g, a, Collections.emptyList());
+        return restrictions.stream()
+                .filter(r -> r.getClass().isAssignableFrom(restrictionClass))
+                .map(r -> (T) r)
+                .findFirst();
+    }
+
     public List<String> getIgnoreScopes() {
         return ignoreScopes;
+    }
+
+    public Collection<Pair<ScopedArtifactRef, String>> findOutOfDateRestrictions(Collection<ScopedArtifactRef> currentDependencies) {
+        Collection<Pair<ScopedArtifactRef, String>> outOfDate = new HashSet<>();
+        for (ScopedArtifactRef ref: currentDependencies) {
+            if (getIgnoreScopes().contains(ref.getScope())) {
+                continue;
+            }
+
+            Optional<VersionPrefixRestriction> prefixRestriction =
+                    getRestrictionFor(ref.getGroupId(), ref.getArtifactId(), VersionPrefixRestriction.class);
+            if (prefixRestriction.isPresent()) {
+                if (!prefixRestriction.get().applies(ref.getVersionString())) {
+                    String prefixString = prefixRestriction.get().getPrefixString();
+                    outOfDate.add(Pair.of(ref, prefixString));
+                }
+            }
+        }
+        return outOfDate;
     }
 
     private void addStreamRule(String ga, VersionStream stream) {
