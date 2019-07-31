@@ -2,8 +2,6 @@ package org.jboss.set.mavendependencyupdater.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.tuple.Pair;
-import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
-import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
 import org.jboss.set.mavendependencyupdater.VersionStream;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
@@ -25,6 +23,7 @@ import java.util.Optional;
 /**
  * Provides app configuration.
  */
+@SuppressWarnings("WeakerAccess")
 public class Configuration {
 
     private static final String WILDCARD = "*";
@@ -34,7 +33,6 @@ public class Configuration {
     public static final String COMMENT = "COMMENT";
     public static final String NEVER = "NEVER";
 
-    private ArtifactRef bomCoordinates;
     private Map<String, Map<String, VersionStream>> streams = new HashMap<>();
     private Map<String, Map<String, List<Restriction>>> restrictions = new HashMap<>();
     private List<String> ignoreScopes = new ArrayList<>();
@@ -43,24 +41,12 @@ public class Configuration {
         ObjectMapper mapper = new ObjectMapper();
         ConfigurationModel data = mapper.readValue(file, ConfigurationModel.class);
 
-
-        // BOM coords
-
-        if (data.getBomCoordinates() != null) {
-            bomCoordinates = SimpleArtifactRef.parse(data.getBomCoordinates());
-        } else {
-            bomCoordinates = new SimpleArtifactRef("undefined", "undefined", "0.1-SNAPSHOT", null, null);
-        }
-
-
         // ignored scopes
         if (data.getIgnoreScopes() != null) {
             ignoreScopes.addAll(data.getIgnoreScopes());
         }
 
-
         // rules
-
         for (Map.Entry<String, Object> gaEntry : data.getRules().entrySet()) {
             String ga = gaEntry.getKey();
             if (gaEntry.getValue() instanceof String) {
@@ -117,10 +103,6 @@ public class Configuration {
         }
     }
 
-    public ArtifactRef getBomCoordinates() {
-        return bomCoordinates;
-    }
-
     public VersionStream getStreamFor(String g, String a, VersionStream defaultStream) {
         return findConfigForGA(streams, g, a, defaultStream);
     }
@@ -131,6 +113,7 @@ public class Configuration {
 
     public <T extends Restriction> Optional<T> getRestrictionFor(String g, String a, Class<T> restrictionClass) {
         List<Restriction> restrictions = findConfigForGA(this.restrictions, g, a, Collections.emptyList());
+        //noinspection unchecked
         return restrictions.stream()
                 .filter(r -> r.getClass().isAssignableFrom(restrictionClass))
                 .map(r -> (T) r)
