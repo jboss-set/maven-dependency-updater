@@ -29,6 +29,20 @@ public class ConfigurationTestCase {
     }
 
     @Test
+    public void testGitHubConfig() {
+        Assert.assertEquals("TomasHofman/wildfly", config.getGitHub().getOriginRepository());
+        Assert.assertEquals("wildfly/wildfly", config.getGitHub().getUpstreamRepository());
+        Assert.assertEquals("joe", config.getGitHub().getLogin());
+        Assert.assertEquals("1234abcd", config.getGitHub().getAccessToken());
+    }
+
+    @Test
+    public void testGitConfig() {
+        Assert.assertEquals("origin", config.getGit().getRemote());
+        Assert.assertEquals("master", config.getGit().getBaseBranch());
+    }
+
+    @Test
     public void testIgnoreScopes() {
         Assert.assertTrue(config.getIgnoreScopes().contains("test"));
     }

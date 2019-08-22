@@ -12,6 +12,18 @@ Example `configuration.json`:
 
 ```json
 {
+  "git": {
+    "remote": "origin",
+    "baseBranch": "master"
+  },
+
+  "github": {
+    "originRepository": "TomasHofman/wildfly",
+    "upstreamRepository": "wildfly/wildfly",
+    "login": "joe",
+    "accessToken": "1234abcd"
+  },
+
   "ignoreScopes": ["test"],
   "rules": {
     "commons-cli:commons-cli": "MICRO",
@@ -85,7 +97,13 @@ but not "1.3.0.Final" or "1.2.3.Beta1".
 
 ## Examples
 
-Align a project:
+Align a project and create separate PRs for each component upgrade:
+
+```bash
+$ java -jar $CLI_JAR generate-prs -c path/to/configuration.json -f path/to/pom.xml
+```
+
+Align a local copy of a project, without committing/pushing changes to upstream repo:
 
 ```bash
 $ java -jar $CLI_JAR align -c path/to/configuration.json -f path/to/pom.xml

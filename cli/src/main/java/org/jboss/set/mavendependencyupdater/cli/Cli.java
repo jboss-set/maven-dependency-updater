@@ -15,6 +15,9 @@ import org.jboss.set.mavendependencyupdater.AvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DefaultAvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
 import org.jboss.set.mavendependencyupdater.PomDependencyUpdater;
+import org.jboss.set.mavendependencyupdater.cli.upgradeprocessing.ModifyLocallyProcessingStrategy;
+import org.jboss.set.mavendependencyupdater.cli.upgradeprocessing.SeparatePRsProcessingStrategy;
+import org.jboss.set.mavendependencyupdater.cli.upgradeprocessing.UpgradeProcessingStrategy;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.jboss.set.mavendependencyupdater.configuration.ConfigurationGenerator;
@@ -29,14 +32,17 @@ public class Cli {
     private static final Logger LOG = Logger.getLogger(Cli.class);
 
     private static final String ALIGN = "align";
+    private static final String GENERATE_PRS = "generate-prs";
     private static final String GENERATE_CONFIG = "generate-config";
     private static final String CHECK_CONFIG = "check-config";
-    private static final String[] COMMANDS = {ALIGN, GENERATE_CONFIG, CHECK_CONFIG};
+    private static final String[] COMMANDS = {ALIGN, GENERATE_PRS, GENERATE_CONFIG, CHECK_CONFIG};
 
     private static final String PREFIX_DOESNT_MATCH_MSG = "Dependency %s doesn't match prefix '%s'";
 
     private Options options;
     private CommandLineParser parser = new DefaultParser();
+    private Configuration configuration;
+    private Collection<ScopedArtifactRef> rootProjectDependencies;
 
     public static void main(String[] args) {
         try {
@@ -108,19 +114,19 @@ public class Cli {
         File pomFile = new File(cmd.getOptionValue('f'));
 
 
-        Collection<ScopedArtifactRef> rootProjectDependencies =
-                new PmeDependencyCollector(pomFile).getRootProjectDependencies();
+        rootProjectDependencies = new PmeDependencyCollector(pomFile).getRootProjectDependencies();
 
         if (ALIGN.equals(arguments[0])) {
-            Configuration configuration = new Configuration(configurationFile);
-            AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver();
-            DependencyEvaluator evaluator = new DependencyEvaluator(configuration, availableVersionsResolver);
-            Map<ArtifactRef, String> newVersions = evaluator.getVersionsToUpgrade(rootProjectDependencies);
-            PomDependencyUpdater.upgradeDependencies(pomFile, newVersions);
+            configuration = new Configuration(configurationFile);
+            performAlignment(new ModifyLocallyProcessingStrategy(pomFile));
+        } else if (GENERATE_PRS.equals(arguments[0])) {
+            configuration = new Configuration(configurationFile);
+            SeparatePRsProcessingStrategy strategy = new SeparatePRsProcessingStrategy(configuration, pomFile);
+            performAlignment(strategy);
         } else if (GENERATE_CONFIG.equals(arguments[0])) {
             new ConfigurationGenerator().generateDefautlConfig(configurationFile, rootProjectDependencies);
         } else if (CHECK_CONFIG.equals(arguments[0])) {
-            Configuration configuration = new Configuration(configurationFile);
+            configuration = new Configuration(configurationFile);
             Collection<Pair<ScopedArtifactRef, String>> outOfDate =
                     configuration.findOutOfDateRestrictions(rootProjectDependencies);
             outOfDate.forEach(p ->
@@ -137,7 +143,9 @@ public class Cli {
 
     private void printHelp() {
         String header = "\nCommands:\n" +
-                "  align              Aligns dependencies in given POM file\n" +
+                "  align              Locally aligns dependencies in given POM file\n" +
+                "  generate-prs       Aligns dependencies in given POM file and generates\n" +
+                "                     separate pull requests for each upgrade\n" +
                 "  generate-config    Generates somewhat sane base for dependency alignment\n" +
                 "                     configuration for given project\n" +
                 "  check-config       Checks if configuration is up-to-date\n" +
@@ -149,6 +157,16 @@ public class Cli {
 
         HelpFormatter formatter = new HelpFormatter();
         formatter.printHelp("java -jar <path/to/cli.jar> <command> <params>", header, options, "");
+    }
+
+    private void performAlignment(UpgradeProcessingStrategy strategy) {
+        assert configuration != null;
+        assert rootProjectDependencies != null;
+
+        AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver();
+        DependencyEvaluator evaluator = new DependencyEvaluator(configuration, availableVersionsResolver);
+        Map<ArtifactRef, String> newVersions = evaluator.getVersionsToUpgrade(rootProjectDependencies);
+        strategy.process(newVersions);
     }
 
 }

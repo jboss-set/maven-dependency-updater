@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Provides app configuration.
+ * Provides tool configuration.
  */
 @SuppressWarnings("WeakerAccess")
 public class Configuration {
@@ -36,10 +36,15 @@ public class Configuration {
     private Map<String, Map<String, VersionStream>> streams = new HashMap<>();
     private Map<String, Map<String, List<Restriction>>> restrictions = new HashMap<>();
     private List<String> ignoreScopes = new ArrayList<>();
+    private GitHubConfigurationModel gitHub;
+    private GitConfigurationModel git;
 
     public Configuration(File file) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         ConfigurationModel data = mapper.readValue(file, ConfigurationModel.class);
+
+        this.gitHub = data.getGitHub();
+        this.git = data.getGit();
 
         // ignored scopes
         if (data.getIgnoreScopes() != null) {
@@ -143,6 +148,14 @@ public class Configuration {
         return outOfDate;
     }
 
+    public GitHubConfigurationModel getGitHub() {
+        return gitHub;
+    }
+
+    public GitConfigurationModel getGit() {
+        return git;
+    }
+
     private void addStreamRule(String ga, VersionStream stream) {
         String[] coord = ga.split(":");
         if (coord.length != 2) {
@@ -192,5 +205,9 @@ public class Configuration {
             }
         }
         return defaultValue;
+    }
+
+    public static class GitHubConfig {
+
     }
 }

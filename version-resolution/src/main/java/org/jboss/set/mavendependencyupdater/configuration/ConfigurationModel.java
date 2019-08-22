@@ -3,8 +3,12 @@ package org.jboss.set.mavendependencyupdater.configuration;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * Overall configuration model, facilitates automatic conversion to/from JSON file.
+ */
 public class ConfigurationModel {
 
     public static final String IGNORE_SCOPES = "ignoreScopes";
@@ -19,6 +23,13 @@ public class ConfigurationModel {
     @JsonProperty
     private List<String> ignoreScopes;
 
+    @JsonProperty
+    @JsonAlias("github")
+    private GitHubConfigurationModel gitHub;
+
+    @JsonProperty
+    private GitConfigurationModel git;
+
     /**
      * GAV of the BOM that's going to be generated.
      */
@@ -32,5 +43,13 @@ public class ConfigurationModel {
 
     public List<String> getIgnoreScopes() {
         return ignoreScopes;
+    }
+
+    public GitHubConfigurationModel getGitHub() {
+        return gitHub;
+    }
+
+    public GitConfigurationModel getGit() {
+        return git;
     }
 }

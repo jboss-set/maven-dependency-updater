@@ -33,6 +33,11 @@
             <artifactId>pom-updater</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>git-manipulator</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>commons-cli</groupId>

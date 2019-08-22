@@ -24,6 +24,7 @@
         <module>dependency-collector</module>
         <module>pom-updater</module>
         <module>commons</module>
+        <module>git-manipulator</module>
     </modules>
 
     <dependencyManagement>
@@ -113,6 +114,18 @@
                 <groupId>org.jboss.up.depres</groupId>
                 <artifactId>model</artifactId>
                 <version>0.1-SNAPSHOT</version>
+            </dependency>
+
+            <!-- GIT -->
+            <dependency>
+                <groupId>org.eclipse.jgit</groupId>
+                <artifactId>org.eclipse.jgit</artifactId>
+                <version>5.4.0.201906121030-r</version>
+            </dependency>
+            <dependency>
+                <groupId>org.kohsuke</groupId>
+                <artifactId>github-api</artifactId>
+                <version>1.95</version>
             </dependency>
 
             <!-- Logging -->
