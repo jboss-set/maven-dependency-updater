@@ -123,9 +123,7 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
             System.out.println(pr.getHtmlUrl());
             return true;
         } catch (Exception e) {
-            // just report, let the loop continue
-            LOG.error("PR creation failed", e);
-            return false;
+            throw new RuntimeException("PR creation failed", e);
         }
     }
 
