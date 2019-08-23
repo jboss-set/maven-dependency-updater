@@ -52,56 +52,58 @@ public class Configuration {
         }
 
         // rules
-        for (Map.Entry<String, Object> gaEntry : data.getRules().entrySet()) {
-            String ga = gaEntry.getKey();
-            if (gaEntry.getValue() instanceof String) {
-                if (NEVER.equals(gaEntry.getValue())) {
-                    // if value is string, it can either be NEVER
-                    addRestriction(ga, NeverRestriction.INSTANCE); // never upgrade
-                } else {
-                    // or else consider it VersionStream value
-                    addStreamRule(ga, VersionStream.valueOf((String) gaEntry.getValue()));
-                }
-            } else if (gaEntry.getValue() instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> configMap = (Map<String, Object>) gaEntry.getValue();
+        if (data.getRules() != null) {
+            for (Map.Entry<String, Object> gaEntry : data.getRules().entrySet()) {
+                String ga = gaEntry.getKey();
+                if (gaEntry.getValue() instanceof String) {
+                    if (NEVER.equals(gaEntry.getValue())) {
+                        // if value is string, it can either be NEVER
+                        addRestriction(ga, NeverRestriction.INSTANCE); // never upgrade
+                    } else {
+                        // or else consider it VersionStream value
+                        addStreamRule(ga, VersionStream.valueOf((String) gaEntry.getValue()));
+                    }
+                } else if (gaEntry.getValue() instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> configMap = (Map<String, Object>) gaEntry.getValue();
 
-                if (configMap.containsKey(PREFIX) && configMap.containsKey(STREAM)) {
-                    throw new IllegalArgumentException("Only one of STREAM and PREFIX keys can be defined for " + ga);
-                }
+                    if (configMap.containsKey(PREFIX) && configMap.containsKey(STREAM)) {
+                        throw new IllegalArgumentException("Only one of STREAM and PREFIX keys can be defined for " + ga);
+                    }
 
-                for (Map.Entry<String, Object> restrictionEntry : configMap.entrySet()) {
-                    Object restrictionObject = restrictionEntry.getValue();
-                    switch (restrictionEntry.getKey()) {
-                        case PREFIX:
-                            addRestriction(ga, new VersionPrefixRestriction((String) restrictionObject));
-                            break;
-                        case QUALIFIER:
+                    for (Map.Entry<String, Object> restrictionEntry : configMap.entrySet()) {
+                        Object restrictionObject = restrictionEntry.getValue();
+                        switch (restrictionEntry.getKey()) {
+                            case PREFIX:
+                                addRestriction(ga, new VersionPrefixRestriction((String) restrictionObject));
+                                break;
+                            case QUALIFIER:
 
-                            String[] masks;
-                            if (restrictionObject instanceof String) {
-                                masks = new String[]{(String) restrictionObject};
-                            } else if (restrictionObject instanceof List) {
-                                String[] stringArray = new String[((List) restrictionObject).size()];
-                                masks = (String[]) ((List) restrictionObject).toArray(stringArray);
-                            } else {
-                                throw new IllegalArgumentException(String.format("String of list of strings expected (%s, %s)",
-                                        ga, QUALIFIER));
-                            }
-                            addRestriction(ga, new QualifierRestriction(masks));
-                            break;
-                        case STREAM:
-                            if (!(restrictionObject instanceof String)) {
-                                throw new IllegalArgumentException(String.format("String expected (%s, %s)",
-                                        ga, STREAM));
-                            }
-                            addStreamRule(ga, VersionStream.valueOf((String) restrictionObject));
-                            break;
-                        case COMMENT:
-                            // ignore
-                            break;
-                        default:
-                            throw new IllegalArgumentException("Unknown rule: " + restrictionEntry.getKey());
+                                String[] masks;
+                                if (restrictionObject instanceof String) {
+                                    masks = new String[]{(String) restrictionObject};
+                                } else if (restrictionObject instanceof List) {
+                                    String[] stringArray = new String[((List) restrictionObject).size()];
+                                    masks = (String[]) ((List) restrictionObject).toArray(stringArray);
+                                } else {
+                                    throw new IllegalArgumentException(String.format("String of list of strings expected (%s, %s)",
+                                            ga, QUALIFIER));
+                                }
+                                addRestriction(ga, new QualifierRestriction(masks));
+                                break;
+                            case STREAM:
+                                if (!(restrictionObject instanceof String)) {
+                                    throw new IllegalArgumentException(String.format("String expected (%s, %s)",
+                                            ga, STREAM));
+                                }
+                                addStreamRule(ga, VersionStream.valueOf((String) restrictionObject));
+                                break;
+                            case COMMENT:
+                                // ignore
+                                break;
+                            default:
+                                throw new IllegalArgumentException("Unknown rule: " + restrictionEntry.getKey());
+                        }
                     }
                 }
             }
@@ -205,9 +207,5 @@ public class Configuration {
             }
         }
         return defaultValue;
-    }
-
-    public static class GitHubConfig {
-
     }
 }

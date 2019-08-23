@@ -17,25 +17,15 @@ public class ConfigurationModel {
     @JsonProperty
     private Map<String, Object> rules;
 
-    @JsonProperty(value = "bom-coordinates")
-    private String bomCoordinates;
-
     @JsonProperty
     private List<String> ignoreScopes;
 
     @JsonProperty
     @JsonAlias("github")
-    private GitHubConfigurationModel gitHub;
+    private GitHubConfigurationModel gitHub = new GitHubConfigurationModel();
 
     @JsonProperty
-    private GitConfigurationModel git;
-
-    /**
-     * GAV of the BOM that's going to be generated.
-     */
-    public String getBomCoordinates() {
-        return bomCoordinates;
-    }
+    private GitConfigurationModel git = new GitConfigurationModel();
 
     public Map<String, Object> getRules() {
         return rules;
