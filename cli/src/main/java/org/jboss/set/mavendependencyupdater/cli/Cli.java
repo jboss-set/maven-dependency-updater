@@ -116,15 +116,17 @@ public class Cli {
 
         rootProjectDependencies = new PmeDependencyCollector(pomFile).getRootProjectDependencies();
 
+        boolean success;
         if (ALIGN.equals(arguments[0])) {
             configuration = new Configuration(configurationFile);
-            performAlignment(new ModifyLocallyProcessingStrategy(pomFile));
+            success = performAlignment(new ModifyLocallyProcessingStrategy(pomFile));
         } else if (GENERATE_PRS.equals(arguments[0])) {
             configuration = new Configuration(configurationFile);
             SeparatePRsProcessingStrategy strategy = new SeparatePRsProcessingStrategy(configuration, pomFile);
-            performAlignment(strategy);
+            success = performAlignment(strategy);
         } else if (GENERATE_CONFIG.equals(arguments[0])) {
             new ConfigurationGenerator().generateDefautlConfig(configurationFile, rootProjectDependencies);
+            success = true;
         } else if (CHECK_CONFIG.equals(arguments[0])) {
             configuration = new Configuration(configurationFile);
             Collection<Pair<ScopedArtifactRef, String>> outOfDate =
@@ -132,13 +134,18 @@ public class Cli {
             outOfDate.forEach(p ->
                     System.err.println(String.format(PREFIX_DOESNT_MATCH_MSG, p.getLeft(), p.getRight()))
             );
+            success = true;
         } else {
             System.err.println("Unknown action: " + arguments[0]);
             printHelp();
             return 10;
         }
 
-        return 0;
+        if (success) {
+            return 0;
+        } else {
+            return 11;
+        }
     }
 
     private void printHelp() {
@@ -159,14 +166,14 @@ public class Cli {
         formatter.printHelp("java -jar <path/to/cli.jar> <command> <params>", header, options, "");
     }
 
-    private void performAlignment(UpgradeProcessingStrategy strategy) {
+    private boolean performAlignment(UpgradeProcessingStrategy strategy) {
         assert configuration != null;
         assert rootProjectDependencies != null;
 
         AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver();
         DependencyEvaluator evaluator = new DependencyEvaluator(configuration, availableVersionsResolver);
         Map<ArtifactRef, String> newVersions = evaluator.getVersionsToUpgrade(rootProjectDependencies);
-        strategy.process(newVersions);
+        return strategy.process(newVersions);
     }
 
 }

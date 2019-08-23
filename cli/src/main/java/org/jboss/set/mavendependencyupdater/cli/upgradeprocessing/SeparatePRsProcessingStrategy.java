@@ -58,23 +58,27 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
     }
 
     @Override
-    public void process(Map<ArtifactRef, String> upgrades) {
+    public boolean process(Map<ArtifactRef, String> upgrades) {
+        boolean result = true;
         String baseBranch = configuration.getGit().getBaseBranch();
 
         for (Map.Entry<ArtifactRef, String> entry: upgrades.entrySet()) {
             try {
                 gitManipulator.checkout(baseBranch);
-                createPRForUpgrade(entry.getKey(), entry.getValue());
+                boolean partialResult = createPRForUpgrade(entry.getKey(), entry.getValue());
+                result = partialResult && result;
                 gitManipulator.checkout(baseBranch);
             } catch (GitAPIException e) {
                 throw new RuntimeException("Failed to checkout base branch: " + baseBranch);
             }
         }
+
+        return result;
     }
 
-    protected void createPRForUpgrade(ArtifactRef artifact, String newVersion) {
+    protected boolean createPRForUpgrade(ArtifactRef artifact, String newVersion) {
         try {
-            String branchName = getBranchName(artifact, newVersion);
+            String workingBranch = getBranchName(artifact, newVersion);
             String commitMessage = getCommitMessage(artifact, newVersion);
             GitConfigurationModel gitConfig = configuration.getGit();
             GitHubConfigurationModel ghConfig = configuration.getGitHub();
@@ -86,20 +90,20 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
 
             // check that remote branch of the same name doesn't exist (local branches would get deleted, if this runs
             // in a CI server)
-            String remoteRef = "refs/remotes/" + gitConfig.getRemote() + "/" + branchName;
+            String remoteRef = "refs/remotes/" + gitConfig.getRemote() + "/" + workingBranch;
             if (gitManipulator.getRemoteBranches().contains(remoteRef)) {
-                LOG.infof("Remote branch '%s' already exists, skipping this upgrade`.", branchName);
-                return;
+                LOG.infof("Remote branch '%s' already exists, skipping this upgrade`.", workingBranch);
+                return true;
             }
             // check that open PR with the same title doesn't exist
             Optional<GHPullRequest> existingPR = findOpenPRByTitle(repo, commitMessage);
             if (existingPR.isPresent()) {
                 LOG.infof("PR already exists, skipping this upgrade: %s", existingPR.get().getHtmlUrl());
-                return;
+                return true;
             }
 
             // prepare new branch
-            gitManipulator.checkout(branchName, true);
+            gitManipulator.checkout(workingBranch, true);
 
             // perform single upgrade
             PomDependencyUpdater.upgradeDependencies(pomFile, Collections.singletonMap(artifact, newVersion));
@@ -107,18 +111,21 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
             // commit and push to origin
             gitManipulator.add("pom.xml"); // TODO: possibly more files
             gitManipulator.commit(commitMessage);
-            gitManipulator.push(gitConfig.getRemote(), branchName);
+            gitManipulator.push(gitConfig.getRemote(), workingBranch);
 
             // create PR
-            String sourceBranch = getSourceBranch(ghConfig.getOriginRepository(), branchName);
+            String sourceBranch = getSourceBranch(ghConfig.getOriginRepository(), workingBranch);
+            String baseBranch = ghConfig.getUpstreamBaseBranch();
             @SuppressWarnings("UnnecessaryLocalVariable")
             String title = commitMessage;
             String description = String.format(PR_DESCRIPTION, artifact.getGroupId(), artifact.getArtifactId());
-            GHPullRequest pr = repo.createPullRequest(title, sourceBranch, gitConfig.getBaseBranch(), description);
+            GHPullRequest pr = repo.createPullRequest(title, sourceBranch, baseBranch, description);
             System.out.println(pr.getHtmlUrl());
+            return true;
         } catch (Exception e) {
             // just report, let the loop continue
             LOG.error("PR creation failed", e);
+            return false;
         }
     }
 

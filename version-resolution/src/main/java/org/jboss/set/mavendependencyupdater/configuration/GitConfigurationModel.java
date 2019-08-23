@@ -7,10 +7,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public class GitConfigurationModel {
 
-    @JsonProperty
+    @JsonProperty(defaultValue = "origin")
     private String remote;
 
-    @JsonProperty
+    @JsonProperty(defaultValue = "remotes/origin/master")
     private String baseBranch;
 
     public String getRemote() {

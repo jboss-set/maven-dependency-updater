@@ -32,6 +32,7 @@ public class ConfigurationTestCase {
     public void testGitHubConfig() {
         Assert.assertEquals("TomasHofman/wildfly", config.getGitHub().getOriginRepository());
         Assert.assertEquals("wildfly/wildfly", config.getGitHub().getUpstreamRepository());
+        Assert.assertEquals("master", config.getGitHub().getUpstreamBaseBranch());
         Assert.assertEquals("joe", config.getGitHub().getLogin());
         Assert.assertEquals("1234abcd", config.getGitHub().getAccessToken());
     }

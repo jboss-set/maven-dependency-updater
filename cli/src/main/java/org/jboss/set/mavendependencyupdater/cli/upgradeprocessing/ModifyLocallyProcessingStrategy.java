@@ -17,9 +17,10 @@ public class ModifyLocallyProcessingStrategy implements UpgradeProcessingStrateg
     }
 
     @Override
-    public void process(Map<ArtifactRef, String> upgrades) {
+    public boolean process(Map<ArtifactRef, String> upgrades) {
         try {
             PomDependencyUpdater.upgradeDependencies(pomFile, upgrades);
+            return true;
         } catch (Exception e) {
             throw new RuntimeException("Failed to upgrade dependencies in pom.xml", e);
         }

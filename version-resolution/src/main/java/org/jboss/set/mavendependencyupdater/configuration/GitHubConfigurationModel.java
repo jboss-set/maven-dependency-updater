@@ -13,6 +13,9 @@ public class GitHubConfigurationModel {
     @JsonProperty
     private String upstreamRepository;
 
+    @JsonProperty(defaultValue = "master")
+    private String upstreamBaseBranch;
+
     @JsonProperty
     private String login;
 
@@ -25,6 +28,10 @@ public class GitHubConfigurationModel {
 
     public String getUpstreamRepository() {
         return upstreamRepository;
+    }
+
+    public String getUpstreamBaseBranch() {
+        return upstreamBaseBranch;
     }
 
     public String getLogin() {

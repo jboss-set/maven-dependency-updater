@@ -10,5 +10,12 @@ import java.util.Map;
  * It could for instance update pom.xml locally, or generate PRs, etc.
  */
 public interface UpgradeProcessingStrategy {
-    void process(Map<ArtifactRef, String> upgrades);
+
+    /**
+     * Process component upgrades
+     *
+     * @param upgrades component upgrades
+     * @return processed successfully?
+     */
+    boolean process(Map<ArtifactRef, String> upgrades);
 }
