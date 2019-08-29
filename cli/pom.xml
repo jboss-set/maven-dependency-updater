@@ -12,31 +12,30 @@
 
     <artifactId>cli</artifactId>
 
+    <properties>
+        <artifactName>alignment-cli</artifactName>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>version-resolution</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>dependency-collector</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>commons</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>pom-updater</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>git-manipulator</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <dependency>
@@ -47,6 +46,18 @@
 
     <build>
         <plugins>
+            <!-- Don't create regular JAR -->
+            <plugin>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-jar</id>
+                        <phase/>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Standalone JAR -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -62,6 +73,7 @@
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
                     <appendAssemblyId>false</appendAssemblyId>
+                    <finalName>${artifactName}-${project.version}</finalName>
                 </configuration>
                 <executions>
                     <execution>
@@ -73,6 +85,68 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- RPM creation -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>rpm-maven-plugin</artifactId>
+                <version>2.2.0</version>
+                <executions>
+                    <execution>
+                        <id>generate-rpm</id>
+                        <goals>
+                            <goal>rpm</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <group>JBoss SET/Tools</group>
+                    <packager>JBoss SET</packager>
+                    <name>${artifactName}</name>
+                    <mappings>
+                        <mapping>
+                            <directory>/usr/share/${artifactName}</directory>
+                            <artifact/>
+                            <filemode>644</filemode>
+                            <username>root</username>
+                            <groupname>root</groupname>
+                        </mapping>
+                        <!-- to set +x mode on the directory -->
+                        <mapping>
+                            <directory>/usr/share/${artifactName}</directory>
+                            <filemode>755</filemode>
+                            <username>root</username>
+                            <groupname>root</groupname>
+                        </mapping>
+                    </mappings>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- disable RPM creation -->
+        <profile>
+            <id>norpm</id>
+            <activation>
+                <property>
+                    <name>norpm</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>rpm-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>generate-rpm</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
