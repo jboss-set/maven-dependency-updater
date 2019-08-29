@@ -146,10 +146,11 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
 
             // create PR
             String sourceBranch = getSourceBranch(ghConfig.getOriginRepository(), workingBranch);
+            String upstreamBaseBranch = ghConfig.getUpstreamBaseBranch();
             @SuppressWarnings("UnnecessaryLocalVariable")
             String title = commitMessage;
             String description = String.format(PR_DESCRIPTION, artifact.getGroupId(), artifact.getArtifactId());
-            GHPullRequest pr = repo.createPullRequest(title, sourceBranch, baseBranch, description);
+            GHPullRequest pr = repo.createPullRequest(title, sourceBranch, upstreamBaseBranch, description);
             System.out.println(pr.getHtmlUrl());
             return true;
         } catch (Exception e) {
