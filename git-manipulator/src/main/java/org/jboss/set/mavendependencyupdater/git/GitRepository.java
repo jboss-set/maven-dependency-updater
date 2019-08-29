@@ -5,6 +5,7 @@ import org.eclipse.jgit.api.CheckoutCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.api.PushCommand;
+import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -14,20 +15,21 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * Provides control of local git repository.
  */
-public class GitManipulator {
+public class GitRepository {
 
     private Repository repository;
     private Git git;
     private String accessToken;
 
     // TODO: replace accessToken with Configuration instance
-    public GitManipulator(File gitDir, String accessToken) throws IOException {
+    public GitRepository(File gitDir, String accessToken) throws IOException {
         repository = FileRepositoryBuilder.create(gitDir);
         git = new Git(repository);
         this.accessToken = accessToken;
@@ -67,11 +69,20 @@ public class GitManipulator {
         return list.stream().map(Ref::getName).collect(Collectors.toList());
     }
 
+    public List<String> getLocalBranches() throws GitAPIException {
+        List<Ref> list = git.branchList().call();
+        return list.stream().map(Ref::getName).collect(Collectors.toList());
+    }
+
+    public void resetLocalChanges() throws GitAPIException {
+        git.reset().setMode(ResetCommand.ResetType.HARD).call();
+    }
+
     Repository getRepository() {
         return repository;
     }
 
-    Git getGit() {
+    public Git getGit() {
         return git;
     }
 }

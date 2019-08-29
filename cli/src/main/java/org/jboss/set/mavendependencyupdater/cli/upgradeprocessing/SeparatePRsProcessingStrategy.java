@@ -9,7 +9,7 @@ import org.jboss.set.mavendependencyupdater.PomDependencyUpdater;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.jboss.set.mavendependencyupdater.configuration.GitConfigurationModel;
 import org.jboss.set.mavendependencyupdater.configuration.GitHubConfigurationModel;
-import org.jboss.set.mavendependencyupdater.git.GitManipulator;
+import org.jboss.set.mavendependencyupdater.git.GitRepository;
 import org.kohsuke.github.GHIssueState;
 import org.kohsuke.github.GHPullRequest;
 import org.kohsuke.github.GHRepository;
@@ -38,7 +38,7 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
 
     private Configuration configuration;
     private File pomFile;
-    private GitManipulator gitManipulator;
+    private GitRepository gitRepository;
     private GitHub gitHub;
     private Map<Map<String, String>, Pair<ArtifactRef, String>> patchDigests = new HashMap<>();
 
@@ -49,7 +49,7 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
         // local git repo control
         File gitDir = new File(pomFile.getParent(), ".git");
         try {
-            this.gitManipulator = new GitManipulator(gitDir, configuration.getGitHub().getAccessToken());
+            this.gitRepository = new GitRepository(gitDir, configuration.getGitHub().getAccessToken());
         } catch (IOException e) {
             throw new RuntimeException("Failure when reading git repository: " + gitDir, e);
         }
@@ -63,34 +63,38 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
         }
     }
 
+    public SeparatePRsProcessingStrategy(Configuration configuration, File pomFile, GitRepository gitRepository, GitHub gitHub) {
+        this.configuration = configuration;
+        this.pomFile = pomFile;
+        this.gitRepository = gitRepository;
+        this.gitHub = gitHub;
+    }
+
     @Override
     public boolean process(Map<ArtifactRef, String> upgrades) {
         boolean result = true;
-        String baseBranch = configuration.getGit().getBaseBranch();
 
-        for (Map.Entry<ArtifactRef, String> entry: upgrades.entrySet()) {
-            try {
-                gitManipulator.checkout(baseBranch);
-                try {
-                    boolean partialResult = createPRForUpgrade(entry.getKey(), entry.getValue());
-                    result = partialResult && result;
-                } finally {
-                    gitManipulator.checkout(baseBranch);
-                }
-            } catch (GitAPIException e) {
-                throw new RuntimeException("Failed to checkout base branch: " + baseBranch);
-            }
+        for (Map.Entry<ArtifactRef, String> entry : upgrades.entrySet()) {
+            boolean partialResult = createPRForUpgrade(entry.getKey(), entry.getValue());
+            result = partialResult && result;
         }
 
         return result;
     }
 
+    /**
+     * @param artifact artifact to upgrade
+     * @param newVersion version to upgrade to
+     * @return success?
+     */
     protected boolean createPRForUpgrade(ArtifactRef artifact, String newVersion) {
+        String baseBranch = configuration.getGit().getBaseBranch();
+        String workingBranch = getBranchName(artifact, newVersion);
+        String commitMessage = getCommitMessage(artifact, newVersion);
+        GitConfigurationModel gitConfig = configuration.getGit();
+        GitHubConfigurationModel ghConfig = configuration.getGitHub();
+
         try {
-            String workingBranch = getBranchName(artifact, newVersion);
-            String commitMessage = getCommitMessage(artifact, newVersion);
-            GitConfigurationModel gitConfig = configuration.getGit();
-            GitHubConfigurationModel ghConfig = configuration.getGitHub();
             GHRepository repo = this.gitHub.getRepository(ghConfig.getUpstreamRepository());
 
             // TODO: devise a way to record open PRs and intelligently handle situations when a new PR is to be opened
@@ -100,7 +104,7 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
             // check that remote branch of the same name doesn't exist (local branches would get deleted, if this runs
             // in a CI server)
             String remoteRef = "refs/remotes/" + gitConfig.getRemote() + "/" + workingBranch;
-            if (gitManipulator.getRemoteBranches().contains(remoteRef)) {
+            if (gitRepository.getRemoteBranches().contains(remoteRef)) {
                 LOG.infof("Remote branch '%s' already exists, skipping this upgrade`.", workingBranch);
                 return true;
             }
@@ -110,6 +114,9 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
                 LOG.infof("PR already exists, skipping this upgrade: %s", existingPR.get().getHtmlUrl());
                 return true;
             }
+
+            // make sure we are on the base branch
+            gitRepository.checkout(baseBranch);
 
             // perform single upgrade
             PomDependencyUpdater.upgradeDependencies(pomFile, Collections.singletonMap(artifact, newVersion));
@@ -125,20 +132,20 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
                         previousUpgrade.getLeft().getGroupId(),
                         previousUpgrade.getLeft().getArtifactId(),
                         previousUpgrade.getRight());
+                gitRepository.resetLocalChanges();
                 return true;
             }
 
             // prepare new branch
-            gitManipulator.checkout(workingBranch, true);
+            gitRepository.checkout(workingBranch, true);
 
             // commit and push to origin
-            gitManipulator.add(POM_XML); // TODO: possibly more files
-            gitManipulator.commit(commitMessage);
-            gitManipulator.push(gitConfig.getRemote(), workingBranch);
+            gitRepository.add(POM_XML); // TODO: possibly more files
+            gitRepository.commit(commitMessage);
+            gitRepository.push(gitConfig.getRemote(), workingBranch);
 
             // create PR
             String sourceBranch = getSourceBranch(ghConfig.getOriginRepository(), workingBranch);
-            String baseBranch = ghConfig.getUpstreamBaseBranch();
             @SuppressWarnings("UnnecessaryLocalVariable")
             String title = commitMessage;
             String description = String.format(PR_DESCRIPTION, artifact.getGroupId(), artifact.getArtifactId());
@@ -147,6 +154,13 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
             return true;
         } catch (Exception e) {
             throw new RuntimeException("PR creation failed", e);
+        } finally {
+            try {
+                // return to base branch
+                gitRepository.checkout(baseBranch);
+            } catch (GitAPIException e) {
+                LOG.errorf("Failed to checkout base branch: %s", baseBranch);
+            }
         }
     }
 
@@ -162,12 +176,12 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
     /**
      * Calculates and records digests of modified files (currently only top level pom.xml). Returns boolean value
      * indicating whether current digest is unique in processed batch of component upgrades or not.
-     *
+     * <p>
      * This should prevent us from creating multiple pull requests in case when multiple dependencies share common
      * version variable and therefore created PRs would be identical.
-     *
+     * <p>
      * TODO: This only solves identical patches problem during a single run, some kind of permanent store is needed to
-     *  solve this for repeated runs.
+     * solve this for repeated runs.
      *
      * @param pomFile modified pom.xml
      * @return digest is unique?
@@ -180,7 +194,7 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
 
     private static Optional<GHPullRequest> findOpenPRByTitle(GHRepository repo, String title) throws IOException {
         List<GHPullRequest> pullRequests = repo.getPullRequests(GHIssueState.OPEN);
-        for (GHPullRequest pr: pullRequests) {
+        for (GHPullRequest pr : pullRequests) {
             if (pr.getTitle().equals(title)) {
                 return Optional.of(pr);
             }

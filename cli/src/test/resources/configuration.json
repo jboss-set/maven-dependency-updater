@@ -1,0 +1,14 @@
+{
+  "git": {
+    "remote": "origin",
+    "baseBranch": "master"
+  },
+
+  "github": {
+    "originRepository": "TomasHofman/wildfly",
+    "upstreamRepository": "wildfly/wildfly",
+    "upstreamBaseBranch": "master",
+    "login": "joe",
+    "accessToken": "1234abcd"
+  }
+}
