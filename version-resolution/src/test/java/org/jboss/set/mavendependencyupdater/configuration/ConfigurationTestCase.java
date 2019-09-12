@@ -3,6 +3,7 @@ package org.jboss.set.mavendependencyupdater.configuration;
 import static org.jboss.set.mavendependencyupdater.VersionStream.MICRO;
 import static org.jboss.set.mavendependencyupdater.VersionStream.MINOR;
 import static org.jboss.set.mavendependencyupdater.VersionStream.QUALIFIER;
+import static org.jboss.set.mavendependencyupdater.configuration.Configuration.NEVER;
 
 import java.io.File;
 import java.io.IOException;
@@ -10,6 +11,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.List;
 
+import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.QualifierRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
 import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
@@ -76,5 +78,11 @@ public class ConfigurationTestCase {
         Assert.assertTrue(restrictions.get(1) instanceof QualifierRestriction);
         Assert.assertTrue(restrictions.get(1).applies("1.Beta1"));
         Assert.assertFalse(restrictions.get(1).applies("1.Final"));
+
+        // defined by wildcard "org.jboss.*:*"
+        Assert.assertTrue(config.getRestrictionFor("org.jboss.whatever", "abcd", NeverRestriction.class).isPresent());
+        // *:*
+        Assert.assertFalse(config.getRestrictionFor("org.jbosswhatever", "abcd", NeverRestriction.class).isPresent());
+        Assert.assertTrue(config.getRestrictionFor("org.jbosswhatever", "abcd", QualifierRestriction.class).isPresent());
     }
 }

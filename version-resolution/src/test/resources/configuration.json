@@ -29,6 +29,10 @@
       "PREFIX": "10.0.0",
       "QUALIFIER": "Beta\\d+"
     },
-    "*:*": "MICRO"
+    "*:*": {
+      "STREAM": "MICRO",
+      "QUALIFIER": "Final"
+    },
+    "org.jboss.*:*": "NEVER"
   }
 }

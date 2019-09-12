@@ -7,6 +7,7 @@ import org.eclipse.aether.version.Version;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.common.ident.SimpleScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
+import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.QualifierRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
 import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
@@ -146,6 +147,21 @@ public class DependencyEvaluatorTestCase {
         availableVersions.add(scheme.parseVersion("1.2.Final"));
         latest = evaluator.findLatest(dependency, versionStream, restrictions, availableVersions);
         Assert.assertEquals("1.2.Final", latest.get().toString());
+    }
+
+    @Test
+    public void testBlacklisted() throws InvalidVersionSpecificationException {
+        GenericVersionScheme scheme = new GenericVersionScheme();
+        SimpleScopedArtifactRef dependency =
+                new SimpleScopedArtifactRef("org.jboss.test", "test", "1.0.0", "jar", null, "compile");
+
+        List<Version> availableVersions = new ArrayList<>();
+        availableVersions.add(scheme.parseVersion("1.0.0"));
+        availableVersions.add(scheme.parseVersion("1.0.1"));
+
+        Optional<Version> latest =
+                evaluator.findLatest(dependency, MICRO, Collections.singletonList(NeverRestriction.INSTANCE), availableVersions);
+        Assert.assertFalse(latest.isPresent());
     }
 
     @Test

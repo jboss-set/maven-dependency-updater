@@ -191,18 +191,30 @@ public class Configuration {
         restrictions.add(restriction);
     }
 
-    private <T> T findConfigForGA(Map<String, Map<String, T>> streams, String g, String a, T defaultValue) {
-        if (streams.containsKey(g)) {
-            if (streams.get(g).containsKey(a)) { // group:artifact
+    private static <T> T findConfigForGA(Map<String, Map<String, T>> streams, String g, String a, T defaultValue) {
+        if (streams.containsKey(g)) { // matching groupId
+            if (streams.get(g).containsKey(a)) { // 1. exact match "group:artifact"
                 return streams.get(g).get(a);
-            } else if (streams.get(g).containsKey(WILDCARD)) { // group:*
+            } else if (streams.get(g).containsKey(WILDCARD)) { // 2. wildcard match "group:*"
                 return streams.get(g).get(WILDCARD);
             }
         }
-        if (streams.containsKey(WILDCARD)) {
-            if (streams.get(WILDCARD).containsKey(a)) { // *:artifact
+        for (Map.Entry<String, Map<String, T>> entry : streams.entrySet()) { // look for group.prefix.*:artifact
+            String group = entry.getKey();
+            Map<String, T> groupRules = entry.getValue();
+            if (!group.equals(WILDCARD) && group.endsWith(WILDCARD)) {
+                String groupPrefix = group.substring(0, group.length() - 1);
+                if (g.startsWith(groupPrefix) && groupRules.containsKey(a)) { // 3. wildcard match "group.prefix.*:artifact"
+                    return groupRules.get(a);
+                } else if (g.startsWith(groupPrefix) && groupRules.containsKey(WILDCARD)) { // 4. wildcard match "group.prefix.*:*"
+                    return groupRules.get(WILDCARD);
+                }
+            }
+        }
+        if (streams.containsKey(WILDCARD)) { // look for marching artifactId in wildcard groupId
+            if (streams.get(WILDCARD).containsKey(a)) { // 5. wildcard match "*:artifact"
                 return streams.get(WILDCARD).get(a);
-            } else if (streams.get(WILDCARD).containsKey(WILDCARD)) { // *:*
+            } else if (streams.get(WILDCARD).containsKey(WILDCARD)) { // 6. wildcard match "*:*"
                 return streams.get(WILDCARD).get(WILDCARD);
             }
         }

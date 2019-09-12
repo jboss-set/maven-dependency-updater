@@ -70,7 +70,7 @@ public class DependencyEvaluator {
                 LOG.debugf("Available versions for '%s' %s: %s", dep, stream, versions);
                 if (latest.isPresent()
                         && !dep.getVersionString().equals(latest.get().toString())) {
-                    LOG.infof("Upgrading '%s' to '%s'", dep, latest.get().toString());
+                    LOG.infof("Found possible upgrade of '%s' to '%s'", dep, latest.get().toString());
                     versionsToUpgrade.put(dep,
                             latest.get().toString());
                 } else {
@@ -108,13 +108,18 @@ public class DependencyEvaluator {
                                                VersionStream stream,
                                                List<Restriction> restrictions,
                                                List<Version> availableVersions) {
-        Optional<Restriction> prefixOptional =
+        /*if (restrictions.stream().anyMatch(r -> r instanceof NeverRestriction)) {
+            return Optional.empty(); // blacklisted component
+        }*/
+
+        Optional<Restriction> prefixRestrictionOptional =
                 restrictions.stream().filter(r -> r instanceof VersionPrefixRestriction).findFirst();
-        boolean restrictedPrefix = prefixOptional.isPresent();
+        boolean restrictedPrefix = prefixRestrictionOptional.isPresent();
 
         if (restrictedPrefix) {
-            VersionPrefixRestriction prefixRestriction = (VersionPrefixRestriction) prefixOptional.get();
+            VersionPrefixRestriction prefixRestriction = (VersionPrefixRestriction) prefixRestrictionOptional.get();
             if (!prefixRestriction.applies(dependency.getVersionString())) {
+                // configured version prefix doesn't match existing dependency => configuration needs to be updated
                 LOG.warnf("Existing dependency '%s' doesn't match configured prefix: '%s'",
                         dependency, prefixRestriction.getPrefixString());
                 configUpToDate = false;
