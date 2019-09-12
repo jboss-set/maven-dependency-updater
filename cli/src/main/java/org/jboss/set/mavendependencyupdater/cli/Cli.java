@@ -14,9 +14,9 @@ import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.AvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DefaultAvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
-import org.jboss.set.mavendependencyupdater.PomDependencyUpdater;
 import org.jboss.set.mavendependencyupdater.cli.upgradeprocessing.ModifyLocallyProcessingStrategy;
 import org.jboss.set.mavendependencyupdater.cli.upgradeprocessing.SeparatePRsProcessingStrategy;
+import org.jboss.set.mavendependencyupdater.cli.upgradeprocessing.TextReportProcessingStrategy;
 import org.jboss.set.mavendependencyupdater.cli.upgradeprocessing.UpgradeProcessingStrategy;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
@@ -33,9 +33,10 @@ public class Cli {
 
     private static final String ALIGN = "align";
     private static final String GENERATE_PRS = "generate-prs";
+    private static final String GENERATE_REPORT = "generate-report";
     private static final String GENERATE_CONFIG = "generate-config";
     private static final String CHECK_CONFIG = "check-config";
-    private static final String[] COMMANDS = {ALIGN, GENERATE_PRS, GENERATE_CONFIG, CHECK_CONFIG};
+    private static final String[] COMMANDS = {ALIGN, GENERATE_PRS, GENERATE_REPORT, GENERATE_CONFIG, CHECK_CONFIG};
 
     private static final String PREFIX_DOESNT_MATCH_MSG = "Dependency %s doesn't match prefix '%s'";
 
@@ -122,7 +123,11 @@ public class Cli {
             success = performAlignment(new ModifyLocallyProcessingStrategy(pomFile));
         } else if (GENERATE_PRS.equals(arguments[0])) {
             configuration = new Configuration(configurationFile);
-            SeparatePRsProcessingStrategy strategy = new SeparatePRsProcessingStrategy(configuration, pomFile);
+            UpgradeProcessingStrategy strategy = new SeparatePRsProcessingStrategy(configuration, pomFile);
+            success = performAlignment(strategy);
+        } else if (GENERATE_REPORT.equals(arguments[0])) {
+            configuration = new Configuration(configurationFile);
+            UpgradeProcessingStrategy strategy = new TextReportProcessingStrategy(pomFile);
             success = performAlignment(strategy);
         } else if (GENERATE_CONFIG.equals(arguments[0])) {
             new ConfigurationGenerator().generateDefautlConfig(configurationFile, rootProjectDependencies);
@@ -153,6 +158,7 @@ public class Cli {
                 "  align              Locally aligns dependencies in given POM file\n" +
                 "  generate-prs       Aligns dependencies in given POM file and generates\n" +
                 "                     separate pull requests for each upgrade\n" +
+                "  generate-report    Generates text report\n" +
                 "  generate-config    Generates somewhat sane base for dependency alignment\n" +
                 "                     configuration for given project\n" +
                 "  check-config       Checks if configuration is up-to-date\n" +

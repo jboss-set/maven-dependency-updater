@@ -109,20 +109,6 @@ public class SeparatePRsProcessingStrategyTestCase {
         Assert.assertTrue(pomContent.contains("<version.jboss-logging>3.4.0.Final</version.jboss-logging>"));
     }
 
-    @Test
-    public void testRecordPatchDigest() throws IOException {
-        Pair<ArtifactRef, String> previous = strategy.recordPatchDigest(pomXml, SimpleArtifactRef.parse("g:a1:1"), "2");
-        Assert.assertNull(previous);
-
-        previous = strategy.recordPatchDigest(pomXml, SimpleArtifactRef.parse("g:a2:1"), "2");
-        Assert.assertNotNull(previous);
-        Assert.assertEquals("a1", previous.getLeft().getArtifactId());
-
-        previous = strategy.recordPatchDigest(pomXml, SimpleArtifactRef.parse("g:a2:1"), "2");
-        Assert.assertNotNull(previous);
-        Assert.assertEquals("a1", previous.getLeft().getArtifactId());
-    }
-
     private static void createRepository(File gitDir) throws IOException {
         Repository repository = FileRepositoryBuilder.create(gitDir);
         repository.create();

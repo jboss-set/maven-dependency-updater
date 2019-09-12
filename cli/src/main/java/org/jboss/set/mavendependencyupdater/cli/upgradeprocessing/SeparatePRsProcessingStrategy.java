@@ -1,6 +1,5 @@
 package org.jboss.set.mavendependencyupdater.cli.upgradeprocessing;
 
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -16,10 +15,8 @@ import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GitHub;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,7 +37,7 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
     private File pomFile;
     private GitRepository gitRepository;
     private GitHub gitHub;
-    private Map<Map<String, String>, Pair<ArtifactRef, String>> patchDigests = new HashMap<>();
+    private PatchDigestRecorder digestRecorder = new PatchDigestRecorder();
 
     public SeparatePRsProcessingStrategy(Configuration configuration, File pomFile) {
         this.configuration = configuration;
@@ -122,7 +119,7 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
             PomDependencyUpdater.upgradeDependencies(pomFile, Collections.singletonMap(artifact, newVersion));
 
             // verify that the patch is unique to the already performed ones
-            Pair<ArtifactRef, String> previousUpgrade = recordPatchDigest(pomFile, artifact, newVersion);
+            Pair<ArtifactRef, String> previousUpgrade = digestRecorder.recordPatchDigest(pomFile, artifact, newVersion);
             if (previousUpgrade != null) {
                 LOG.infof("Patch for %s:%s:%s is identical to already created patch for %s:%s:%s," +
                                 " skipping PR creation.",
@@ -172,25 +169,6 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
     protected String getCommitMessage(ArtifactRef artifact, String newVersion) {
         return String.format("Upgrade %s:%s from %s to %s",
                 artifact.getGroupId(), artifact.getArtifactId(), artifact.getVersionString(), newVersion);
-    }
-
-    /**
-     * Calculates and records digests of modified files (currently only top level pom.xml). Returns boolean value
-     * indicating whether current digest is unique in processed batch of component upgrades or not.
-     * <p>
-     * This should prevent us from creating multiple pull requests in case when multiple dependencies share common
-     * version variable and therefore created PRs would be identical.
-     * <p>
-     * TODO: This only solves identical patches problem during a single run, some kind of permanent store is needed to
-     * solve this for repeated runs.
-     *
-     * @param pomFile modified pom.xml
-     * @return digest is unique?
-     */
-    Pair<ArtifactRef, String> recordPatchDigest(File pomFile, ArtifactRef ref, String newVersion) throws IOException {
-        String hash = DigestUtils.sha1Hex(new FileInputStream(pomFile));
-        Map<String, String> patchDigest = Collections.singletonMap(POM_XML, hash);
-        return patchDigests.putIfAbsent(patchDigest, Pair.of(ref, newVersion));
     }
 
     private static Optional<GHPullRequest> findOpenPRByTitle(GHRepository repo, String title) throws IOException {
