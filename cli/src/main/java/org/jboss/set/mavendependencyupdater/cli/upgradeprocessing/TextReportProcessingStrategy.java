@@ -9,6 +9,7 @@ import org.jboss.set.mavendependencyupdater.git.GitRepository;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -22,11 +23,13 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
     private static final Logger LOG = Logger.getLogger(TextReportProcessingStrategy.class);
 
     private File pomFile;
+    private PrintStream outputStream;
     private GitRepository gitRepository;
     private PatchDigestRecorder digestRecorder = new PatchDigestRecorder();
 
-    public TextReportProcessingStrategy(File pomFile) {
+    public TextReportProcessingStrategy(File pomFile, PrintStream outputStream) {
         this.pomFile = pomFile;
+        this.outputStream = outputStream;
         File gitDir = new File(pomFile.getParent(), ".git");
         try {
             this.gitRepository = new GitRepository(gitDir, null);
@@ -38,8 +41,8 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
     @Override
     public boolean process(Map<ArtifactRef, String> upgrades) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss yyyy-MM-dd");
-        System.out.println("Generated at " + formatter.format(LocalDateTime.now()));
-        System.out.println();
+        outputStream.println("Generated at " + formatter.format(LocalDateTime.now()));
+        outputStream.println();
 
         List<Map.Entry<ArtifactRef, String>> sortedEntries = upgrades.entrySet().stream()
                 .sorted(Comparator.comparing(Map.Entry::getKey)).collect(Collectors.toList());
@@ -54,7 +57,7 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
                 gitRepository.resetLocalChanges();
 
                 if (previous == null) {
-                    System.out.println(String.format("%s:%s:%s -> %s",
+                    outputStream.println(String.format("%s:%s:%s -> %s",
                             artifact.getGroupId(), artifact.getArtifactId(), artifact.getVersionString(), newVersion));
                 }
             }

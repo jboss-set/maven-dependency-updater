@@ -24,6 +24,8 @@ import org.jboss.set.mavendependencyupdater.configuration.ConfigurationGenerator
 import org.jboss.set.mavendependencyupdater.projectparser.PmeDependencyCollector;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.Collection;
 import java.util.Map;
 
@@ -70,6 +72,12 @@ public class Cli {
                 .numberOfArgs(1)
                 .desc("POM file")
                 .build());
+        options.addOption(Option.builder("o")
+                .longOpt("output")
+                .hasArgs()
+                .numberOfArgs(1)
+                .desc("output file for report generation")
+                .build());
     }
 
     private int run(String[] args) throws Exception {
@@ -107,6 +115,7 @@ public class Cli {
             return 10;
         }
         File configurationFile = new File(cmd.getOptionValue('c'));
+
         if (!cmd.hasOption('f')) {
             System.err.println("Missing option 'f'");
             printHelp();
@@ -114,6 +123,12 @@ public class Cli {
         }
         File pomFile = new File(cmd.getOptionValue('f'));
 
+        PrintStream outputStream;
+        if (cmd.hasOption('o')) {
+            outputStream = new PrintStream(cmd.getOptionValue('o'));
+        } else {
+            outputStream = System.out;
+        }
 
         rootProjectDependencies = new PmeDependencyCollector(pomFile).getRootProjectDependencies();
 
@@ -127,7 +142,7 @@ public class Cli {
             success = performAlignment(strategy);
         } else if (GENERATE_REPORT.equals(arguments[0])) {
             configuration = new Configuration(configurationFile);
-            UpgradeProcessingStrategy strategy = new TextReportProcessingStrategy(pomFile);
+            UpgradeProcessingStrategy strategy = new TextReportProcessingStrategy(pomFile, outputStream);
             success = performAlignment(strategy);
         } else if (GENERATE_CONFIG.equals(arguments[0])) {
             new ConfigurationGenerator().generateDefautlConfig(configurationFile, rootProjectDependencies);
