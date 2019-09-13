@@ -10,7 +10,7 @@ import org.jboss.set.mavendependencyupdater.git.GitRepository;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Comparator;
@@ -40,8 +40,8 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
 
     @Override
     public boolean process(Map<ArtifactRef, String> upgrades) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss yyyy-MM-dd");
-        outputStream.println("Generated at " + formatter.format(LocalDateTime.now()));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss z yyyy-MM-dd");
+        outputStream.println("Generated at " + formatter.format(ZonedDateTime.now()));
         outputStream.println();
 
         List<Map.Entry<ArtifactRef, String>> sortedEntries = upgrades.entrySet().stream()
