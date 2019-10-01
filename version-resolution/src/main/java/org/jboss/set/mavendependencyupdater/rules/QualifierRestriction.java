@@ -20,7 +20,7 @@ public class QualifierRestriction implements Restriction {
     }
 
     @Override
-    public boolean applies(String version) {
+    public boolean applies(String version, String originalVersion) {
         String qualifier = Version.parse(version).getQualifier();
         for (Pattern pattern: patterns) {
             if (pattern.matcher(qualifier).matches()) {

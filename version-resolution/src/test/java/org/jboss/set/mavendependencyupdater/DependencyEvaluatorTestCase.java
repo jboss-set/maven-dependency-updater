@@ -11,6 +11,7 @@ import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.QualifierRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
 import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
+import org.jboss.set.mavendependencyupdater.rules.VersionStreamRestriction;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -92,16 +93,19 @@ public class DependencyEvaluatorTestCase {
         availableVersions.add(scheme.parseVersion("1.1.3"));
         availableVersions.add(scheme.parseVersion("1.2.5"));
 
-        Optional<Version> latest = evaluator.findLatest(newDependency("1.1.1"), MICRO, Collections.emptyList(), availableVersions);
+        List<Restriction> restrictionsMicro = Collections.singletonList(new VersionStreamRestriction(MICRO));
+        List<Restriction> restrictionsQualifier = Collections.singletonList(new VersionStreamRestriction(QUALIFIER));
+
+        Optional<Version> latest = evaluator.findLatest(newDependency("1.1.1"), restrictionsMicro, availableVersions);
         Assert.assertEquals("1.1.4.redhat-00002", latest.get().toString());
 
-        latest = evaluator.findLatest(newDependency("1.1.1"), QUALIFIER, Collections.emptyList(), availableVersions);
+        latest = evaluator.findLatest(newDependency("1.1.1"), restrictionsQualifier, availableVersions);
         Assert.assertEquals("1.1.1.SP02", latest.get().toString());
 
-        latest = evaluator.findLatest(newDependency("1.1.0"), QUALIFIER, Collections.emptyList(), availableVersions);
+        latest = evaluator.findLatest(newDependency("1.1.0"), restrictionsQualifier, availableVersions);
         Assert.assertEquals("1.1.0", latest.get().toString());
 
-        latest = evaluator.findLatest(newDependency("1.0.0"), QUALIFIER, Collections.emptyList(), availableVersions);
+        latest = evaluator.findLatest(newDependency("1.0.0"), restrictionsQualifier, availableVersions);
         Assert.assertFalse(latest.isPresent());
     }
 
@@ -125,27 +129,27 @@ public class DependencyEvaluatorTestCase {
 
 
         availableVersions.add(scheme.parseVersion("1.Final"));
-        latest = evaluator.findLatest(dependency, versionStream, restrictions, availableVersions);
+        latest = evaluator.findLatest(dependency, restrictions, availableVersions);
         Assert.assertEquals("1.Final", latest.get().toString());
 
         availableVersions.add(scheme.parseVersion("10.Final"));
-        latest = evaluator.findLatest(dependency, versionStream, restrictions, availableVersions);
+        latest = evaluator.findLatest(dependency, restrictions, availableVersions);
         Assert.assertEquals("1.Final", latest.get().toString());
 
         availableVersions.add(scheme.parseVersion("1.1.Final"));
-        latest = evaluator.findLatest(dependency, versionStream, restrictions, availableVersions);
+        latest = evaluator.findLatest(dependency, restrictions, availableVersions);
         Assert.assertEquals("1.1.Final", latest.get().toString());
 
         availableVersions.add(scheme.parseVersion("1.1.Final-redhat-00001"));
-        latest = evaluator.findLatest(dependency, versionStream, restrictions, availableVersions);
+        latest = evaluator.findLatest(dependency, restrictions, availableVersions);
         Assert.assertEquals("1.1.Final-redhat-00001", latest.get().toString());
 
         availableVersions.add(scheme.parseVersion("1.2"));
-        latest = evaluator.findLatest(dependency, versionStream, restrictions, availableVersions);
+        latest = evaluator.findLatest(dependency, restrictions, availableVersions);
         Assert.assertEquals("1.1.Final-redhat-00001", latest.get().toString());
 
         availableVersions.add(scheme.parseVersion("1.2.Final"));
-        latest = evaluator.findLatest(dependency, versionStream, restrictions, availableVersions);
+        latest = evaluator.findLatest(dependency, restrictions, availableVersions);
         Assert.assertEquals("1.2.Final", latest.get().toString());
     }
 
@@ -160,7 +164,7 @@ public class DependencyEvaluatorTestCase {
         availableVersions.add(scheme.parseVersion("1.0.1"));
 
         Optional<Version> latest =
-                evaluator.findLatest(dependency, MICRO, Collections.singletonList(NeverRestriction.INSTANCE), availableVersions);
+                evaluator.findLatest(dependency, Collections.singletonList(NeverRestriction.INSTANCE), availableVersions);
         Assert.assertFalse(latest.isPresent());
     }
 
@@ -179,7 +183,7 @@ public class DependencyEvaluatorTestCase {
                 new SimpleScopedArtifactRef("test", "test", "1.0.0", "jar", null, "compile");
 
 
-        Optional<Version> latest = evaluator.findLatest(dependency, null, restrictions, availableVersions);
+        Optional<Version> latest = evaluator.findLatest(dependency, restrictions, availableVersions);
         Assert.assertFalse(latest.isPresent());
     }
 

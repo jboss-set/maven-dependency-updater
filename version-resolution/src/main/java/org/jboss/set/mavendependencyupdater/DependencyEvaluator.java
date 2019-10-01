@@ -8,6 +8,7 @@ import org.eclipse.aether.version.Version;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
+import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
 import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
 
@@ -18,9 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
-
-import static org.jboss.set.mavendependencyupdater.VersionStream.MICRO;
-import static org.jboss.set.mavendependencyupdater.utils.VersionUtils.equalMmm;
 
 public class DependencyEvaluator {
 
@@ -58,16 +56,14 @@ public class DependencyEvaluator {
             }
 
             try {
-                VersionStream stream =
-                        configuration.getStreamFor(dep.getGroupId(), dep.getArtifactId(), MICRO);
                 List<Restriction> restrictions =
                         configuration.getRestrictionsFor(dep.getGroupId(), dep.getArtifactId());
 
                 List<Version> versions = availableVersionsResolver.resolveVersionRange(rangeArtifact);
                 Optional<Version> latest =
-                        findLatest(dep, stream, restrictions, versions);
+                        findLatest(dep, restrictions, versions);
 
-                LOG.debugf("Available versions for '%s' %s: %s", dep, stream, versions);
+                LOG.debugf("Available versions for '%s': %s", dep, versions);
                 if (latest.isPresent()
                         && !dep.getVersionString().equals(latest.get().toString())) {
                     LOG.infof("Found possible upgrade of '%s' to '%s'", dep, latest.get().toString());
@@ -97,20 +93,17 @@ public class DependencyEvaluator {
      * Searches given list of available versions for the latest version in given stream.
      *
      * @param dependency        original dependency.
-     * @param stream            the highest segment of the version that is allowed to change.
-     *                          This parameter is ignored if `restrictions` list contains `VersionPrefixRestriction`.
      * @param restrictions      list of restrictions that versions must satisfy.
      *                          If `VersionPrefixRestriction` is present, `stream` parameter is ignored.
      * @param availableVersions available versions.
      * @return latest available version in given stream.
      */
     Optional<Version> findLatest(ScopedArtifactRef dependency,
-                                               VersionStream stream,
                                                List<Restriction> restrictions,
                                                List<Version> availableVersions) {
-        /*if (restrictions.stream().anyMatch(r -> r instanceof NeverRestriction)) {
+        if (restrictions.stream().anyMatch(r -> r instanceof NeverRestriction)) {
             return Optional.empty(); // blacklisted component
-        }*/
+        }
 
         Optional<Restriction> prefixRestrictionOptional =
                 restrictions.stream().filter(r -> r instanceof VersionPrefixRestriction).findFirst();
@@ -118,7 +111,7 @@ public class DependencyEvaluator {
 
         if (restrictedPrefix) {
             VersionPrefixRestriction prefixRestriction = (VersionPrefixRestriction) prefixRestrictionOptional.get();
-            if (!prefixRestriction.applies(dependency.getVersionString())) {
+            if (!prefixRestriction.applies(dependency.getVersionString(), dependency.getVersionString())) {
                 // configured version prefix doesn't match existing dependency => configuration needs to be updated
                 LOG.warnf("Existing dependency '%s' doesn't match configured prefix: '%s'",
                         dependency, prefixRestriction.getPrefixString());
@@ -129,12 +122,8 @@ public class DependencyEvaluator {
 
         Stream<Version> workingStream = availableVersions.stream();
 
-        if (!restrictedPrefix && !VersionStream.ANY.equals(stream)) { // don't filter by stream if prefix restriction is present
-            workingStream = workingStream.filter(v -> equalMmm(dependency.getVersionString(), v.toString(), stream.higher()));
-        }
-
         for (Restriction restriction : restrictions) {
-            workingStream = workingStream.filter(v -> restriction.applies(v.toString()));
+            workingStream = workingStream.filter(v -> restriction.applies(v.toString(), dependency.getVersionString()));
         }
 
         return workingStream.max(Comparator.naturalOrder());

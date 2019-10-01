@@ -32,7 +32,7 @@ public class VersionPrefixRestriction implements Restriction {
     }
 
     @Override
-    public boolean applies(String versionString) {
+    public boolean applies(String versionString, String originalVersion) {
         Version version = Version.parse(versionString);
         if (!prefixVersion.isPrefixOf(version)) {
             return false;

@@ -8,6 +8,7 @@ import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.QualifierRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
 import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
+import org.jboss.set.mavendependencyupdater.rules.VersionStreamRestriction;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +34,6 @@ public class Configuration {
     public static final String COMMENT = "COMMENT";
     public static final String NEVER = "NEVER";
 
-    private Map<String, Map<String, VersionStream>> streams = new HashMap<>();
     private Map<String, Map<String, List<Restriction>>> restrictions = new HashMap<>();
     private List<String> ignoreScopes = new ArrayList<>();
     private GitHubConfigurationModel gitHub;
@@ -61,7 +61,7 @@ public class Configuration {
                         addRestriction(ga, NeverRestriction.INSTANCE); // never upgrade
                     } else {
                         // or else consider it VersionStream value
-                        addStreamRule(ga, VersionStream.valueOf((String) gaEntry.getValue()));
+                        addRestriction(ga, new VersionStreamRestriction(VersionStream.valueOf((String) gaEntry.getValue())));
                     }
                 } else if (gaEntry.getValue() instanceof Map) {
                     @SuppressWarnings("unchecked")
@@ -96,7 +96,7 @@ public class Configuration {
                                     throw new IllegalArgumentException(String.format("String expected (%s, %s)",
                                             ga, STREAM));
                                 }
-                                addStreamRule(ga, VersionStream.valueOf((String) restrictionObject));
+                                addRestriction(ga, new VersionStreamRestriction(VersionStream.valueOf((String) restrictionObject)));
                                 break;
                             case COMMENT:
                                 // ignore
@@ -108,10 +108,6 @@ public class Configuration {
                 }
             }
         }
-    }
-
-    public VersionStream getStreamFor(String g, String a, VersionStream defaultStream) {
-        return findConfigForGA(streams, g, a, defaultStream);
     }
 
     public List<Restriction> getRestrictionsFor(String g, String a) {
@@ -141,7 +137,7 @@ public class Configuration {
             Optional<VersionPrefixRestriction> prefixRestriction =
                     getRestrictionFor(ref.getGroupId(), ref.getArtifactId(), VersionPrefixRestriction.class);
             if (prefixRestriction.isPresent()) {
-                if (!prefixRestriction.get().applies(ref.getVersionString())) {
+                if (!prefixRestriction.get().applies(ref.getVersionString(), ref.getVersionString())) {
                     String prefixString = prefixRestriction.get().getPrefixString();
                     outOfDate.add(Pair.of(ref, prefixString));
                 }
@@ -156,24 +152,6 @@ public class Configuration {
 
     public GitConfigurationModel getGit() {
         return git;
-    }
-
-    private void addStreamRule(String ga, VersionStream stream) {
-        String[] coord = ga.split(":");
-        if (coord.length != 2) {
-            throw new IllegalArgumentException("Invalid stream key: " + ga);
-        }
-        String g = coord[0];
-        String a = coord[1];
-
-        Map<String, VersionStream> groupStreams =
-                streams.computeIfAbsent(g, k -> new HashMap<>());
-
-        if (groupStreams.containsKey(a)) {
-            throw new IllegalArgumentException("Stream for " + ga + " defined twice.");
-        }
-
-        groupStreams.put(a, stream);
     }
 
     private void addRestriction(String ga, Restriction restriction) {
