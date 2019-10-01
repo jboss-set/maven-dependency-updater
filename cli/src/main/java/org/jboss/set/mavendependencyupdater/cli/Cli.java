@@ -123,13 +123,6 @@ public class Cli {
         }
         File pomFile = new File(cmd.getOptionValue('f'));
 
-        PrintStream outputStream;
-        if (cmd.hasOption('o')) {
-            outputStream = new PrintStream(cmd.getOptionValue('o'));
-        } else {
-            outputStream = System.out;
-        }
-
         rootProjectDependencies = new PmeDependencyCollector(pomFile).getRootProjectDependencies();
 
         boolean success;
@@ -142,7 +135,7 @@ public class Cli {
             success = performAlignment(strategy);
         } else if (GENERATE_REPORT.equals(arguments[0])) {
             configuration = new Configuration(configurationFile);
-            UpgradeProcessingStrategy strategy = new TextReportProcessingStrategy(pomFile, outputStream);
+            UpgradeProcessingStrategy strategy = new TextReportProcessingStrategy(pomFile, cmd.getOptionValue('o'));
             success = performAlignment(strategy);
         } else if (GENERATE_CONFIG.equals(arguments[0])) {
             new ConfigurationGenerator().generateDefautlConfig(configurationFile, rootProjectDependencies);

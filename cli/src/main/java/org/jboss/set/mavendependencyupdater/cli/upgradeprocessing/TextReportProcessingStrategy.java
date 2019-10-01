@@ -23,13 +23,13 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
     private static final Logger LOG = Logger.getLogger(TextReportProcessingStrategy.class);
 
     private File pomFile;
-    private PrintStream outputStream;
+    private String outputFileName;
     private GitRepository gitRepository;
     private PatchDigestRecorder digestRecorder = new PatchDigestRecorder();
 
-    public TextReportProcessingStrategy(File pomFile, PrintStream outputStream) {
+    public TextReportProcessingStrategy(File pomFile, String outputFileName) {
         this.pomFile = pomFile;
-        this.outputStream = outputStream;
+        this.outputFileName = outputFileName;
         File gitDir = new File(pomFile.getParent(), ".git");
         try {
             this.gitRepository = new GitRepository(gitDir, null);
@@ -40,14 +40,26 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
 
     @Override
     public boolean process(Map<ArtifactRef, String> upgrades) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss z yyyy-MM-dd");
-        outputStream.println("Generated at " + formatter.format(ZonedDateTime.now()));
-        outputStream.println();
-
-        List<Map.Entry<ArtifactRef, String>> sortedEntries = upgrades.entrySet().stream()
-                .sorted(Comparator.comparing(Map.Entry::getKey)).collect(Collectors.toList());
-
+        PrintStream outputStream = null;
         try {
+            List<Map.Entry<ArtifactRef, String>> sortedEntries = upgrades.entrySet().stream()
+                    .sorted(Comparator.comparing(Map.Entry::getKey)).collect(Collectors.toList());
+
+            if (sortedEntries.size() == 0) {
+                LOG.info("No components to upgrade.");
+                return true;
+            }
+
+            if (outputFileName != null) {
+                outputStream = new PrintStream(outputFileName);
+            } else {
+                outputStream = System.out;
+            }
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss z yyyy-MM-dd");
+            outputStream.println("Generated at " + formatter.format(ZonedDateTime.now()));
+            outputStream.println();
+
             for (Map.Entry<ArtifactRef, String> entry : sortedEntries) {
                 ArtifactRef artifact = entry.getKey();
                 String newVersion = entry.getValue();
@@ -69,6 +81,10 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
                 gitRepository.resetLocalChanges();
             } catch (GitAPIException e) {
                 LOG.error("Can't reset local changes", e);
+            }
+
+            if (outputStream != null && outputStream != System.out) {
+                outputStream.close();
             }
         }
     }
