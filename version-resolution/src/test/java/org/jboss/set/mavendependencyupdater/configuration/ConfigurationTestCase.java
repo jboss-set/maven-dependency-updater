@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
 
 import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.QualifierRestriction;
@@ -71,5 +72,13 @@ public class ConfigurationTestCase {
         // *:*
         Assert.assertFalse(config.getRestrictionFor("org.jbosswhatever", "abcd", NeverRestriction.class).isPresent());
         Assert.assertTrue(config.getRestrictionFor("org.jbosswhatever", "abcd", QualifierRestriction.class).isPresent());
+    }
+
+    @Test
+    public void testRepositories() {
+        Map<String, String> repositories = config.getRepositories();
+        Assert.assertEquals(2, repositories.size());
+        Assert.assertEquals(repositories.get("MRRC GA"), "https://maven.repository.redhat.com/ga/");
+        Assert.assertEquals(repositories.get("MRRC EA"), "https://maven.repository.redhat.com/earlyaccess/all/");
     }
 }

@@ -1,4 +1,9 @@
 {
+  "repositories": {
+    "MRRC GA": "https://maven.repository.redhat.com/ga/",
+    "MRRC EA": "https://maven.repository.redhat.com/earlyaccess/all/"
+  },
+
   "git": {
     "remote": "origin",
     "baseBranch": "master"

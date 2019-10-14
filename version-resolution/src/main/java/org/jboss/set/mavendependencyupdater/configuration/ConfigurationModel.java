@@ -15,6 +15,9 @@ public class ConfigurationModel {
     public static final String RULES = "rules";
 
     @JsonProperty
+    private Map<String, String> repositories;
+
+    @JsonProperty
     private Map<String, Object> rules;
 
     @JsonProperty
@@ -26,6 +29,10 @@ public class ConfigurationModel {
 
     @JsonProperty
     private GitConfigurationModel git = new GitConfigurationModel();
+
+    public Map<String, String> getRepositories() {
+        return repositories;
+    }
 
     public Map<String, Object> getRules() {
         return rules;

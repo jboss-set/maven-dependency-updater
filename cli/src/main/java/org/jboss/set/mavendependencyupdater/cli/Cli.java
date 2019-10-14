@@ -24,8 +24,6 @@ import org.jboss.set.mavendependencyupdater.configuration.ConfigurationGenerator
 import org.jboss.set.mavendependencyupdater.projectparser.PmeDependencyCollector;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.PrintStream;
 import java.util.Collection;
 import java.util.Map;
 
@@ -184,7 +182,7 @@ public class Cli {
         assert configuration != null;
         assert rootProjectDependencies != null;
 
-        AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver();
+        AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver(configuration);
         DependencyEvaluator evaluator = new DependencyEvaluator(configuration, availableVersionsResolver);
         Map<ArtifactRef, String> newVersions = evaluator.getVersionsToUpgrade(rootProjectDependencies);
         return strategy.process(newVersions);

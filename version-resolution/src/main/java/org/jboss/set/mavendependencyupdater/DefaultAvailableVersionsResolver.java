@@ -1,7 +1,9 @@
 package org.jboss.set.mavendependencyupdater;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.maven.repository.internal.DefaultArtifactDescriptorReader;
 import org.apache.maven.repository.internal.DefaultVersionResolver;
@@ -23,9 +25,11 @@ import org.eclipse.aether.resolution.VersionRangeRequest;
 import org.eclipse.aether.resolution.VersionRangeResult;
 import org.eclipse.aether.spi.connector.RepositoryConnectorFactory;
 import org.eclipse.aether.spi.connector.transport.TransporterFactory;
+import org.eclipse.aether.transport.file.FileTransporterFactory;
 import org.eclipse.aether.transport.http.HttpTransporterFactory;
 import org.eclipse.aether.version.Version;
 import org.jboss.logging.Logger;
+import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 
 public class DefaultAvailableVersionsResolver implements AvailableVersionsResolver {
 
@@ -33,19 +37,27 @@ public class DefaultAvailableVersionsResolver implements AvailableVersionsResolv
 
     private RepositorySystem system;
     private DefaultRepositorySystemSession session;
+    private List<RemoteRepository> repositories;
 
-    public DefaultAvailableVersionsResolver() {
+    public DefaultAvailableVersionsResolver(Configuration configuration) {
         system = newRepositorySystem();
         session = newRepositorySystemSession(system);
+        this.repositories = newRemoteRepositoryList(configuration.getRepositories());
     }
 
     @Override
     public List<Version> resolveVersionRange(Artifact artifact) throws RepositoryException {
         VersionRangeRequest rangeRequest = new VersionRangeRequest();
         rangeRequest.setArtifact(artifact);
-        rangeRequest.setRepositories(newRepositories());
+        rangeRequest.setRepositories(repositories);
 
         VersionRangeResult rangeResult = system.resolveVersionRange(session, rangeRequest);
+
+        if (LOG.isDebugEnabled()) {
+            for (Exception e: rangeResult.getExceptions()) {
+                LOG.debugf(e, "Version resolution exception: %s", e.getMessage());
+            }
+        }
 
         return rangeResult.getVersions();
     }
@@ -64,7 +76,7 @@ public class DefaultAvailableVersionsResolver implements AvailableVersionsResolv
     private static RepositorySystem newRepositorySystem() {
         DefaultServiceLocator locator = newServiceLocator();
         locator.addService( RepositoryConnectorFactory.class, BasicRepositoryConnectorFactory.class );
-//        locator.addService( TransporterFactory.class, FileTransporterFactory.class );
+        locator.addService( TransporterFactory.class, FileTransporterFactory.class );
         locator.addService( TransporterFactory.class, HttpTransporterFactory.class );
 
         locator.setErrorHandler( new DefaultServiceLocator.ErrorHandler()
@@ -96,9 +108,19 @@ public class DefaultAvailableVersionsResolver implements AvailableVersionsResolv
         return session;
     }
 
-    private static List<RemoteRepository> newRepositories() {
+    private static List<RemoteRepository> newRemoteRepositoryList(Map<String, String> repositories) {
+        if (!repositories.isEmpty()) {
+            ArrayList<RemoteRepository> repos = new ArrayList<>();
+            for (Map.Entry<String, String> entry : repositories.entrySet()) {
+                repos.add(new RemoteRepository.Builder(entry.getKey(), "default", entry.getValue()).build());
+            }
+            LOG.infof("Using repositories: %s", repositories.values());
+            return repos;
+        }
+        // if none specified, return Maven Central as default
+        LOG.infof("Using Maven Central repository");
         return Collections.singletonList(
-                new RemoteRepository.Builder("central", "default", "https://repo.maven.apache.org/maven2/")
+                new RemoteRepository.Builder("central", "default", "https://repo1.maven.org/maven2/")
                         .build());
     }
 

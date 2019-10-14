@@ -38,6 +38,7 @@ public class Configuration {
     private List<String> ignoreScopes = new ArrayList<>();
     private GitHubConfigurationModel gitHub;
     private GitConfigurationModel git;
+    private Map<String, String> repositories = new HashMap<>();
 
     public Configuration(File file) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
@@ -45,6 +46,10 @@ public class Configuration {
 
         this.gitHub = data.getGitHub();
         this.git = data.getGit();
+
+        if (data.getRepositories() != null) {
+            this.repositories.putAll(data.getRepositories());
+        }
 
         // ignored scopes
         if (data.getIgnoreScopes() != null) {
@@ -152,6 +157,10 @@ public class Configuration {
 
     public GitConfigurationModel getGit() {
         return git;
+    }
+
+    public Map<String, String> getRepositories() {
+        return repositories;
     }
 
     private void addRestriction(String ga, Restriction restriction) {

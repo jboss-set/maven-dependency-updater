@@ -1,7 +1,5 @@
 package org.jboss.set.mavendependencyupdater.cli.upgradeprocessing;
 
-import org.apache.commons.lang3.tuple.Pair;
-import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;

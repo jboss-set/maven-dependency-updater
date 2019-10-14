@@ -60,6 +60,7 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
             outputStream.println("Generated at " + formatter.format(ZonedDateTime.now()));
             outputStream.println();
 
+            int counter = 0;
             for (Map.Entry<ArtifactRef, String> entry : sortedEntries) {
                 ArtifactRef artifact = entry.getKey();
                 String newVersion = entry.getValue();
@@ -69,10 +70,13 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
                 gitRepository.resetLocalChanges();
 
                 if (previous == null) {
+                    counter++;
                     outputStream.println(String.format("%s:%s:%s -> %s",
                             artifact.getGroupId(), artifact.getArtifactId(), artifact.getVersionString(), newVersion));
                 }
             }
+
+            outputStream.println("\n" + counter + " items");
             return true;
         } catch (Exception e) {
             throw new RuntimeException("Report generation failed", e);
