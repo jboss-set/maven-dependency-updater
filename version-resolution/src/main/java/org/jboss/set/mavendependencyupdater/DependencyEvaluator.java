@@ -4,6 +4,7 @@ import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.eclipse.aether.RepositoryException;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
+import org.eclipse.aether.resolution.VersionRangeResult;
 import org.eclipse.aether.version.Version;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
@@ -36,10 +37,10 @@ public class DependencyEvaluator {
     /**
      * Determine which artifacts can be upgraded.
      *
-     * @return returns map G:A => newVersion
+     * @return returns map "G:A" => Pair[newVersion, repoUrl]
      */
-    public Map<ArtifactRef, String> getVersionsToUpgrade(Collection<ScopedArtifactRef> dependencies) {
-        Map<ArtifactRef, String> versionsToUpgrade = new HashMap<>();
+    public Map<ArtifactRef, ComponentUpgrade> getVersionsToUpgrade(Collection<ScopedArtifactRef> dependencies) {
+        Map<ArtifactRef, ComponentUpgrade> versionsToUpgrade = new HashMap<>();
         configUpToDate = true;
 
         for (ScopedArtifactRef dep : dependencies) {
@@ -59,16 +60,16 @@ public class DependencyEvaluator {
                 List<Restriction> restrictions =
                         configuration.getRestrictionsFor(dep.getGroupId(), dep.getArtifactId());
 
-                List<Version> versions = availableVersionsResolver.resolveVersionRange(rangeArtifact);
+                VersionRangeResult versionRangeResult = availableVersionsResolver.resolveVersionRange(rangeArtifact);
                 Optional<Version> latest =
-                        findLatest(dep, restrictions, versions);
+                        findLatest(dep, restrictions, versionRangeResult.getVersions());
 
-                LOG.debugf("Available versions for '%s': %s", dep, versions);
-                if (latest.isPresent()
-                        && !dep.getVersionString().equals(latest.get().toString())) {
-                    LOG.infof("Found possible upgrade of '%s' to '%s'", dep, latest.get().toString());
-                    versionsToUpgrade.put(dep,
-                            latest.get().toString());
+                LOG.debugf("Available versions for '%s': %s", dep, versionRangeResult);
+                if (latest.isPresent() && !dep.getVersionString().equals(latest.get().toString())) {
+                    String latestStr = latest.get().toString();
+                    String repoId = versionRangeResult.getRepository(latest.get()).getId();
+                    LOG.infof("Found possible upgrade of '%s' to '%s' in repo '%s'", dep, latestStr, repoId);
+                    versionsToUpgrade.put(dep, new ComponentUpgrade(dep, latestStr, repoId));
                 } else {
                     LOG.debugf("  => no change");
                 }
@@ -129,4 +130,31 @@ public class DependencyEvaluator {
         return workingStream.max(Comparator.naturalOrder());
     }
 
+    /**
+     * Data bean wrapping component upgrade information.
+     */
+    public static class ComponentUpgrade {
+
+        private ArtifactRef artifact;
+        private String newVersion;
+        private String repository;
+
+        public ComponentUpgrade(ArtifactRef artifact, String newVersion, String repository) {
+            this.artifact = artifact;
+            this.newVersion = newVersion;
+            this.repository = repository;
+        }
+
+        public ArtifactRef getArtifact() {
+            return artifact;
+        }
+
+        public String getNewVersion() {
+            return newVersion;
+        }
+
+        public String getRepository() {
+            return repository;
+        }
+    }
 }

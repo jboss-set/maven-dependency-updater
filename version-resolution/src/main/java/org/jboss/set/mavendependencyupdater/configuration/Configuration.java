@@ -2,6 +2,7 @@ package org.jboss.set.mavendependencyupdater.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.tuple.Pair;
+import org.eclipse.aether.repository.RemoteRepository;
 import org.jboss.set.mavendependencyupdater.VersionStream;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
@@ -49,6 +50,8 @@ public class Configuration {
 
         if (data.getRepositories() != null) {
             this.repositories.putAll(data.getRepositories());
+        } else {
+            this.repositories.put("Central", "https://repo1.maven.org/maven2/");
         }
 
         // ignored scopes

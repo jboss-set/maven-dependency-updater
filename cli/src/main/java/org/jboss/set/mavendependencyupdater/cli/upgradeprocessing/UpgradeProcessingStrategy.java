@@ -1,6 +1,7 @@
 package org.jboss.set.mavendependencyupdater.cli.upgradeprocessing;
 
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
+import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
 
 import java.util.Map;
 
@@ -17,5 +18,5 @@ public interface UpgradeProcessingStrategy {
      * @param upgrades component upgrades
      * @return processed successfully?
      */
-    boolean process(Map<ArtifactRef, String> upgrades);
+    boolean process(Map<ArtifactRef, DependencyEvaluator.ComponentUpgrade> upgrades);
 }

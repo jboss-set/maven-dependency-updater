@@ -133,7 +133,7 @@ public class Cli {
             success = performAlignment(strategy);
         } else if (GENERATE_REPORT.equals(arguments[0])) {
             configuration = new Configuration(configurationFile);
-            UpgradeProcessingStrategy strategy = new TextReportProcessingStrategy(pomFile, cmd.getOptionValue('o'));
+            UpgradeProcessingStrategy strategy = new TextReportProcessingStrategy(configuration, pomFile, cmd.getOptionValue('o'));
             success = performAlignment(strategy);
         } else if (GENERATE_CONFIG.equals(arguments[0])) {
             new ConfigurationGenerator().generateDefautlConfig(configurationFile, rootProjectDependencies);
@@ -184,7 +184,7 @@ public class Cli {
 
         AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver(configuration);
         DependencyEvaluator evaluator = new DependencyEvaluator(configuration, availableVersionsResolver);
-        Map<ArtifactRef, String> newVersions = evaluator.getVersionsToUpgrade(rootProjectDependencies);
+        Map<ArtifactRef, DependencyEvaluator.ComponentUpgrade> newVersions = evaluator.getVersionsToUpgrade(rootProjectDependencies);
         return strategy.process(newVersions);
     }
 

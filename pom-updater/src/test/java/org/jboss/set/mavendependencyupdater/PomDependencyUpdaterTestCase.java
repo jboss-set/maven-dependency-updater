@@ -42,11 +42,11 @@ public class PomDependencyUpdaterTestCase {
 
     @Test
     public void testUpgradeDependencies() throws IOException, XMLStreamException, XmlPullParserException {
-        HashMap<ArtifactRef, String> deps = new HashMap<>();
-        deps.put(newArtifactRef("commons-cli", "commons-cli", "1.4"), "1.4.redhat-00001");
-        deps.put(newArtifactRef("org.jboss.logging", "jboss-logging", "3.4.0"), "3.4.0.redhat-00001");
-        deps.put(newArtifactRef("junit", "junit", "4.12"), "4.13.redhat-00001");
-        deps.put(newArtifactRef("org.apache.maven", "maven-core", "3.5.0"), "3.5.0.redhat-00001");
+        HashMap<ArtifactRef, DependencyEvaluator.ComponentUpgrade> deps = new HashMap<>();
+        deps.put(newArtifactRef("commons-cli", "commons-cli", "1.4"), newUpgrade("1.4.redhat-00001"));
+        deps.put(newArtifactRef("org.jboss.logging", "jboss-logging", "3.4.0"), newUpgrade("3.4.0.redhat-00001"));
+        deps.put(newArtifactRef("junit", "junit", "4.12"), newUpgrade("4.13.redhat-00001"));
+        deps.put(newArtifactRef("org.apache.maven", "maven-core", "3.5.0"), newUpgrade("3.5.0.redhat-00001"));
 
         PomDependencyUpdater.upgradeDependencies(pomFile, deps);
 
@@ -82,5 +82,9 @@ public class PomDependencyUpdaterTestCase {
         dependency = MavenUtils.findDependency(model.getDependencies(), "maven-core");
         Assert.assertTrue(dependency.isPresent());
         Assert.assertEquals("3.5.0.redhat-00001", dependency.get().getVersion());
+    }
+
+    private static DependencyEvaluator.ComponentUpgrade newUpgrade(String version) {
+        return new DependencyEvaluator.ComponentUpgrade(null, version, null);
     }
 }

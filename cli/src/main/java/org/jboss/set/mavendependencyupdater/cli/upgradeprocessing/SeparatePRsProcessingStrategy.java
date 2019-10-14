@@ -4,6 +4,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.jboss.logging.Logger;
+import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
 import org.jboss.set.mavendependencyupdater.PomDependencyUpdater;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.jboss.set.mavendependencyupdater.configuration.GitConfigurationModel;
@@ -68,11 +69,11 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
     }
 
     @Override
-    public boolean process(Map<ArtifactRef, String> upgrades) {
+    public boolean process(Map<ArtifactRef, DependencyEvaluator.ComponentUpgrade> upgrades) {
         boolean result = true;
 
-        for (Map.Entry<ArtifactRef, String> entry : upgrades.entrySet()) {
-            boolean partialResult = createPRForUpgrade(entry.getKey(), entry.getValue());
+        for (Map.Entry<ArtifactRef, DependencyEvaluator.ComponentUpgrade> entry : upgrades.entrySet()) {
+            boolean partialResult = createPRForUpgrade(entry.getKey(), entry.getValue().getNewVersion());
             result = partialResult && result;
         }
 
@@ -116,7 +117,8 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
             gitRepository.checkout(baseBranch);
 
             // perform single upgrade
-            PomDependencyUpdater.upgradeDependencies(pomFile, Collections.singletonMap(artifact, newVersion));
+            PomDependencyUpdater.upgradeDependencies(pomFile,
+                    Collections.singletonMap(artifact, new DependencyEvaluator.ComponentUpgrade(null, newVersion, null)));
 
             // verify that the patch is unique to the already performed ones
             Pair<ArtifactRef, String> previousUpgrade = digestRecorder.recordPatchDigest(pomFile, artifact, newVersion);

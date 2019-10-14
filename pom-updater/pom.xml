@@ -16,6 +16,10 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>commons</artifactId>
         </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>version-resolution</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.commonjava.maven.atlas</groupId>

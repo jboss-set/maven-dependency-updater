@@ -1,17 +1,19 @@
 package org.jboss.set.mavendependencyupdater;
 
-import java.util.Collections;
+import org.eclipse.aether.RepositoryException;
+import org.eclipse.aether.artifact.Artifact;
+import org.eclipse.aether.repository.RemoteRepository;
+import org.eclipse.aether.resolution.VersionRangeRequest;
+import org.eclipse.aether.resolution.VersionRangeResult;
+import org.eclipse.aether.util.version.GenericVersionScheme;
+import org.eclipse.aether.version.Version;
+import org.eclipse.aether.version.VersionScheme;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import org.eclipse.aether.RepositoryException;
-import org.eclipse.aether.artifact.Artifact;
-import org.eclipse.aether.util.version.GenericVersionScheme;
-import org.eclipse.aether.version.Version;
-import org.eclipse.aether.version.VersionScheme;
 
 public class AvailableVersionsResolverMock implements AvailableVersionsResolver {
 
@@ -26,12 +28,17 @@ public class AvailableVersionsResolverMock implements AvailableVersionsResolver 
     }
 
     @Override
-    public List<Version> resolveVersionRange(Artifact artifact) throws RepositoryException {
+    public VersionRangeResult resolveVersionRange(Artifact artifact) throws RepositoryException {
         List<Version> versions = results.get(artifact.getGroupId() + ":" + artifact.getArtifactId());
+        VersionRangeResult result = new VersionRangeResult(new VersionRangeRequest());
         if (versions != null) {
-            return versions;
+            result.setVersions(versions);
+            RemoteRepository testRepo = new RemoteRepository.Builder("TestRepo", null, null).build();
+            for (Version v: versions) {
+                result.setRepository(v, testRepo);
+            }
         }
-        return Collections.emptyList();
+        return result;
     }
 
     @FunctionalInterface

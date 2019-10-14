@@ -69,11 +69,12 @@ public class DependencyEvaluatorTestCase {
         artifactRefs.add(refCore = newScopedArtifactRef("org.wildfly", "wildfly-core", "10.0.0.Beta1", "compile"));
         artifactRefs.add(refJunit = newScopedArtifactRef("junit", "junit", "4.8", "test"));
 
-        Map<ArtifactRef, String> upgradedVersions = evaluator.getVersionsToUpgrade(artifactRefs);
+        Map<ArtifactRef, DependencyEvaluator.ComponentUpgrade> upgradedVersions =
+                evaluator.getVersionsToUpgrade(artifactRefs);
 
-        Assert.assertEquals("1.2.0", upgradedVersions.get(refMessaging));
-        Assert.assertEquals("1.1.1.SP02", upgradedVersions.get(refPicketlink));
-        Assert.assertEquals("10.0.0.Beta2", upgradedVersions.get(refCore));
+        Assert.assertEquals("1.2.0", upgradedVersions.get(refMessaging).getNewVersion());
+        Assert.assertEquals("1.1.1.SP02", upgradedVersions.get(refPicketlink).getNewVersion());
+        Assert.assertEquals("10.0.0.Beta2", upgradedVersions.get(refCore).getNewVersion());
         Assert.assertNull(upgradedVersions.get(refJunit)); // ignored scope
     }
 

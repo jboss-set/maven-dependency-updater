@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.maven.repository.internal.DefaultArtifactDescriptorReader;
 import org.apache.maven.repository.internal.DefaultVersionResolver;
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
@@ -46,7 +47,7 @@ public class DefaultAvailableVersionsResolver implements AvailableVersionsResolv
     }
 
     @Override
-    public List<Version> resolveVersionRange(Artifact artifact) throws RepositoryException {
+    public VersionRangeResult resolveVersionRange(Artifact artifact) throws RepositoryException {
         VersionRangeRequest rangeRequest = new VersionRangeRequest();
         rangeRequest.setArtifact(artifact);
         rangeRequest.setRepositories(repositories);
@@ -59,7 +60,8 @@ public class DefaultAvailableVersionsResolver implements AvailableVersionsResolv
             }
         }
 
-        return rangeResult.getVersions();
+
+        return rangeResult;
     }
 
 

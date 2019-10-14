@@ -1,10 +1,8 @@
 package org.jboss.set.mavendependencyupdater;
 
-import java.util.List;
-
 import org.eclipse.aether.RepositoryException;
 import org.eclipse.aether.artifact.Artifact;
-import org.eclipse.aether.version.Version;
+import org.eclipse.aether.resolution.VersionRangeResult;
 
 public interface AvailableVersionsResolver {
 
@@ -14,6 +12,6 @@ public interface AvailableVersionsResolver {
      * @param artifact artifact with version range
      * @return list of available versions
      */
-    List<Version> resolveVersionRange(Artifact artifact) throws RepositoryException;
+    VersionRangeResult resolveVersionRange(Artifact artifact) throws RepositoryException;
 
 }

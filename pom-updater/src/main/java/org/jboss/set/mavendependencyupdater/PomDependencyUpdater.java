@@ -26,7 +26,7 @@ public class PomDependencyUpdater {
 
     private static final Logger LOG = Logger.getLogger(PomDependencyUpdater.class);
 
-    public static void upgradeDependencies(File pomFile, Map<ArtifactRef, String> dependencies)
+    public static void upgradeDependencies(File pomFile, Map<ArtifactRef, DependencyEvaluator.ComponentUpgrade> dependencies)
             throws XMLStreamException, IOException, XmlPullParserException {
         StringBuilder content = PomHelper.readXmlFile(pomFile);
         Model model = new MavenXpp3Reader().read(new FileInputStream(pomFile));
@@ -35,7 +35,7 @@ public class PomDependencyUpdater {
         inputFactory.setProperty(XMLInputFactory2.P_PRESERVE_LOCATION, Boolean.TRUE);
         ModifiedPomXMLEventReader pom = new ModifiedPomXMLEventReader(content, inputFactory);
 
-        for (Map.Entry<ArtifactRef, String> entry: dependencies.entrySet()) {
+        for (Map.Entry<ArtifactRef, DependencyEvaluator.ComponentUpgrade> entry: dependencies.entrySet()) {
             ArtifactRef ref = entry.getKey();
 
             // TODO: Need to determine profile.
@@ -75,10 +75,10 @@ public class PomDependencyUpdater {
 
 
             if (propertyName != null) { // version specified by a property
-                PomHelper.setPropertyVersion(pom, null, propertyName, entry.getValue());
+                PomHelper.setPropertyVersion(pom, null, propertyName, entry.getValue().getNewVersion());
             } else { // version specified directly
                 PomHelper.setDependencyVersion(pom, ref.getGroupId(), ref.getArtifactId(), ref.getVersionString(),
-                        entry.getValue(), model);
+                        entry.getValue().getNewVersion(), model);
             }
         }
 
