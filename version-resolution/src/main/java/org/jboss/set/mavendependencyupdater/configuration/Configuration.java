@@ -2,7 +2,6 @@ package org.jboss.set.mavendependencyupdater.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.tuple.Pair;
-import org.eclipse.aether.repository.RemoteRepository;
 import org.jboss.set.mavendependencyupdater.VersionStream;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
@@ -34,6 +33,7 @@ public class Configuration {
     public static final String STREAM = "STREAM";
     public static final String COMMENT = "COMMENT";
     public static final String NEVER = "NEVER";
+    public static final String IGNORE = "IGNORE";
 
     private Map<String, Map<String, List<Restriction>>> restrictions = new HashMap<>();
     private List<String> ignoreScopes = new ArrayList<>();
@@ -80,37 +80,35 @@ public class Configuration {
                     }
 
                     for (Map.Entry<String, Object> restrictionEntry : configMap.entrySet()) {
-                        Object restrictionObject = restrictionEntry.getValue();
-                        switch (restrictionEntry.getKey()) {
-                            case PREFIX:
-                                addRestriction(ga, new VersionPrefixRestriction((String) restrictionObject));
-                                break;
-                            case QUALIFIER:
-
-                                String[] masks;
-                                if (restrictionObject instanceof String) {
-                                    masks = new String[]{(String) restrictionObject};
-                                } else if (restrictionObject instanceof List) {
-                                    String[] stringArray = new String[((List) restrictionObject).size()];
-                                    masks = (String[]) ((List) restrictionObject).toArray(stringArray);
-                                } else {
-                                    throw new IllegalArgumentException(String.format("String of list of strings expected (%s, %s)",
-                                            ga, QUALIFIER));
-                                }
-                                addRestriction(ga, new QualifierRestriction(masks));
-                                break;
-                            case STREAM:
-                                if (!(restrictionObject instanceof String)) {
-                                    throw new IllegalArgumentException(String.format("String expected (%s, %s)",
-                                            ga, STREAM));
-                                }
-                                addRestriction(ga, new VersionStreamRestriction(VersionStream.valueOf((String) restrictionObject)));
-                                break;
-                            case COMMENT:
-                                // ignore
-                                break;
-                            default:
-                                throw new IllegalArgumentException("Unknown rule: " + restrictionEntry.getKey());
+                        String restrictionName = restrictionEntry.getKey();
+                        Object restrictionConfig = restrictionEntry.getValue();
+                        try {
+                            switch (restrictionName) {
+                                case PREFIX:
+                                    addRestriction(ga, new VersionPrefixRestriction((String) restrictionConfig));
+                                    break;
+                                case QUALIFIER:
+                                    addRestriction(ga, new QualifierRestriction(readSingleStringOrArray(restrictionConfig)));
+                                    break;
+                                case IGNORE:
+                                    addRestriction(ga, new QualifierRestriction(readSingleStringOrArray(restrictionConfig)));
+                                    break;
+                                case STREAM:
+                                    if (!(restrictionConfig instanceof String)) {
+                                        throw new IllegalArgumentException(String.format("String expected, %s given.",
+                                                restrictionConfig.getClass().getName()));
+                                    }
+                                    addRestriction(ga, new VersionStreamRestriction(VersionStream.valueOf((String) restrictionConfig)));
+                                    break;
+                                case COMMENT:
+                                    // ignore
+                                    break;
+                                default:
+                                    throw new IllegalArgumentException("Unknown rule.");
+                            }
+                        } catch (IllegalArgumentException e) {
+                            throw new RuntimeException(String.format("Configuration exception for rule %s:%s: %s",
+                                    ga, restrictionName, e.getMessage()), e);
                         }
                     }
                 }
@@ -209,5 +207,18 @@ public class Configuration {
             }
         }
         return defaultValue;
+    }
+
+    private static String[] readSingleStringOrArray(Object restrictionObject) {
+        String[] result;
+        if (restrictionObject instanceof String) {
+            result = new String[]{(String) restrictionObject};
+        } else if (restrictionObject instanceof List) {
+            String[] stringArray = new String[((List) restrictionObject).size()];
+            result = (String[]) ((List) restrictionObject).toArray(stringArray);
+        } else {
+            throw new IllegalArgumentException("String or list of strings expected.");
+        }
+        return result;
     }
 }
