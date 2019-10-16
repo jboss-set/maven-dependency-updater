@@ -23,13 +23,6 @@
     "org.wildfly:wildfly-messaging": {
       "STREAM": "MINOR"
     },
-    "org.picketlink:*": {
-      "STREAM": "QUALIFIER",
-      "QUALIFIER": [
-        "Final",
-        "SP\\d+"
-      ]
-    },
     "org.wildfly:wildfly-core": {
       "PREFIX": "10.0.0",
       "QUALIFIER": "Beta\\d+"
@@ -37,6 +30,18 @@
     "*:*": {
       "STREAM": "MICRO",
       "QUALIFIER": "Final"
+    },
+    "org.picketlink:*": {
+      "STREAM": "QUALIFIER",
+      "QUALIFIER": [
+        "Final",
+        "SP\\d+"
+      ]
+    },
+    "org.apache.cxf.xjc-utils:*" : {
+      "IGNORE" : [
+        "\\.fuse-"
+      ]
     },
     "org.jboss.*:*": "NEVER"
   }

@@ -7,6 +7,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.Map;
 
+import org.jboss.set.mavendependencyupdater.rules.IgnoreRestriction;
 import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.QualifierRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
@@ -56,6 +57,11 @@ public class ConfigurationTestCase {
         Assert.assertTrue(restrictions.get(1).applies("1.Final", null));
         Assert.assertTrue(restrictions.get(1).applies("1.SP02", null));
         Assert.assertFalse(restrictions.get(1).applies("1.Beta1", null));
+
+        restrictions = config.getRestrictionsFor("org.apache.cxf.xjc-utils", "whatever");
+        Assert.assertEquals(1, restrictions.size());
+        Assert.assertTrue(restrictions.get(0) instanceof IgnoreRestriction);
+        Assert.assertFalse(restrictions.get(0).applies("1.2.3.fuse-1234-redhat-00001", null));
 
         restrictions = config.getRestrictionsFor("org.wildfly", "wildfly-core");
         Assert.assertEquals(2, restrictions.size());

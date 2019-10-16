@@ -11,6 +11,6 @@ public class IgnoreRestriction extends AbstractExpressionMatchingRestriction {
 
     @Override
     public boolean applies(String version, String originalVersion) {
-        return !matches(version, false);
+        return !find(version);
     }
 }

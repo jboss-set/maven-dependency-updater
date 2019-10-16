@@ -20,16 +20,29 @@ abstract class AbstractExpressionMatchingRestriction implements Restriction {
     }
 
     /**
+     * Tests if the string is matched by one of configured patterns.
      *
      * @param str string to be tested
-     * @param wholeString if true whole string must match, if false part of the string must match
-     * @return string matches one of configured patterns
+     * @return string matched?
      */
-    boolean matches(String str, boolean wholeString) {
+    boolean matches(String str) {
         for (Pattern pattern: patterns) {
-            if (wholeString
-                    ? pattern.matcher(str).matches()
-                    : pattern.matcher(str).find()) {
+            if (pattern.matcher(str).matches()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Tests if the string is found by one of configured patterns.
+     *
+     * @param str string to be tested
+     * @return string was found?
+     */
+    boolean find(String str) {
+        for (Pattern pattern: patterns) {
+            if (pattern.matcher(str).find()) {
                 return true;
             }
         }

@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 public class VersionPrefixRestriction implements Restriction {
 
     private String prefixString;
-    private Version prefixVersion;
+    private TokenizedVersion prefixVersion;
     private Pattern remainderRegex;
 
     public VersionPrefixRestriction(String prefixString) {
@@ -25,7 +25,7 @@ public class VersionPrefixRestriction implements Restriction {
 
     public VersionPrefixRestriction(String prefix, String remainderRegex) {
         this.prefixString = prefix;
-        this.prefixVersion = Version.parse(prefix);
+        this.prefixVersion = TokenizedVersion.parse(prefix);
         if (remainderRegex != null) {
             this.remainderRegex = Pattern.compile(remainderRegex);
         }
@@ -33,7 +33,7 @@ public class VersionPrefixRestriction implements Restriction {
 
     @Override
     public boolean applies(String versionString, String originalVersion) {
-        Version version = Version.parse(versionString);
+        TokenizedVersion version = TokenizedVersion.parse(versionString);
         if (!prefixVersion.isPrefixOf(version)) {
             return false;
         }

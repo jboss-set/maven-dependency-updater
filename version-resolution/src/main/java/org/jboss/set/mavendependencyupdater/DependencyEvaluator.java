@@ -11,7 +11,9 @@ import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
+import org.jboss.set.mavendependencyupdater.rules.TokenizedVersion;
 import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
+import org.jboss.set.mavendependencyupdater.rules.VersionStreamRestriction;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -24,6 +26,9 @@ import java.util.stream.Stream;
 public class DependencyEvaluator {
 
     private static final Logger LOG = Logger.getLogger(DependencyEvaluator.class);
+
+    private static final VersionStreamRestriction DEFAULT_STREAM_RESTRICTION =
+            new VersionStreamRestriction(VersionStream.MICRO);
 
     private Configuration configuration;
     private AvailableVersionsResolver availableVersionsResolver;
@@ -109,6 +114,7 @@ public class DependencyEvaluator {
         Optional<Restriction> prefixRestrictionOptional =
                 restrictions.stream().filter(r -> r instanceof VersionPrefixRestriction).findFirst();
         boolean restrictedPrefix = prefixRestrictionOptional.isPresent();
+        boolean restrictedStream = restrictions.stream().anyMatch(r -> r instanceof VersionStreamRestriction);
 
         if (restrictedPrefix) {
             VersionPrefixRestriction prefixRestriction = (VersionPrefixRestriction) prefixRestrictionOptional.get();
@@ -123,11 +129,18 @@ public class DependencyEvaluator {
 
         Stream<Version> workingStream = availableVersions.stream();
 
+        // if neither stream nor prefix restrictions were given, use MICRO stream by default
+        if (!restrictedPrefix && !restrictedStream) {
+            workingStream = workingStream.filter(v ->
+                    DEFAULT_STREAM_RESTRICTION.applies(v.toString(), dependency.getVersionString()));
+        }
+
+        // apply configured restrictions
         for (Restriction restriction : restrictions) {
             workingStream = workingStream.filter(v -> restriction.applies(v.toString(), dependency.getVersionString()));
         }
 
-        return workingStream.max(Comparator.naturalOrder());
+        return workingStream.max(Comparator.comparing(v -> TokenizedVersion.parse(v.toString())));
     }
 
     /**

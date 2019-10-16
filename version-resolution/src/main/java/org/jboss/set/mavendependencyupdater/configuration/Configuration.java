@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jboss.set.mavendependencyupdater.VersionStream;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
+import org.jboss.set.mavendependencyupdater.rules.IgnoreRestriction;
 import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.QualifierRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
@@ -17,6 +18,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,7 +41,7 @@ public class Configuration {
     private List<String> ignoreScopes = new ArrayList<>();
     private GitHubConfigurationModel gitHub;
     private GitConfigurationModel git;
-    private Map<String, String> repositories = new HashMap<>();
+    private Map<String, String> repositories = new LinkedHashMap<>();
 
     public Configuration(File file) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
@@ -91,7 +93,7 @@ public class Configuration {
                                     addRestriction(ga, new QualifierRestriction(readSingleStringOrArray(restrictionConfig)));
                                     break;
                                 case IGNORE:
-                                    addRestriction(ga, new QualifierRestriction(readSingleStringOrArray(restrictionConfig)));
+                                    addRestriction(ga, new IgnoreRestriction(readSingleStringOrArray(restrictionConfig)));
                                     break;
                                 case STREAM:
                                     if (!(restrictionConfig instanceof String)) {

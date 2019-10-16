@@ -53,6 +53,8 @@ public class DependencyEvaluatorTestCase {
                 Arrays.asList("1.1.1.SP01", "1.1.1.SP02", "1.1.2.SP01", "1.1.2.SP02")); // SP
         resolver.setResult("org.wildfly:wildfly-core",
                 Arrays.asList("10.0.0.Beta1", "10.0.0.Beta2", "10.0.1.Beta3")); // prefix "10.0.0" with qualifier "Beta\\d+"
+        resolver.setResult("org.apache.cxf.xjc-utils:cxf-xjc-runtime",
+                Arrays.asList("3.2.3.redhat-00002", "3.2.4.fuse-740019-redhat-00003", "3.3.0")); // fuse should be ignored
         resolver.setResult("junit:junit", Arrays.asList("4.8.1", "4.12"));
 
         evaluator = new DependencyEvaluator(configuration, resolver);
@@ -62,11 +64,12 @@ public class DependencyEvaluatorTestCase {
     public void testGetVersionsToUpgrade() {
         ArrayList<ScopedArtifactRef> artifactRefs = new ArrayList<>();
 
-        ScopedArtifactRef refMessaging, refCore, refPicketlink, refJunit;
+        ScopedArtifactRef refMessaging, refCore, refPicketlink, refXjc, refJunit;
 
         artifactRefs.add(refMessaging = newScopedArtifactRef("org.wildfly", "wildfly-messaging", "1.1.1", "compile"));
         artifactRefs.add(refPicketlink = newScopedArtifactRef("org.picketlink", "picketlink-impl", "1.1.1.SP01", "compile"));
         artifactRefs.add(refCore = newScopedArtifactRef("org.wildfly", "wildfly-core", "10.0.0.Beta1", "compile"));
+        artifactRefs.add(refXjc = newScopedArtifactRef("org.apache.cxf.xjc-utils", "cxf-xjc-runtime", "3.2.3.redhat-00002", "compile"));
         artifactRefs.add(refJunit = newScopedArtifactRef("junit", "junit", "4.8", "test"));
 
         Map<ArtifactRef, DependencyEvaluator.ComponentUpgrade> upgradedVersions =
@@ -75,6 +78,7 @@ public class DependencyEvaluatorTestCase {
         Assert.assertEquals("1.2.0", upgradedVersions.get(refMessaging).getNewVersion());
         Assert.assertEquals("1.1.1.SP02", upgradedVersions.get(refPicketlink).getNewVersion());
         Assert.assertEquals("10.0.0.Beta2", upgradedVersions.get(refCore).getNewVersion());
+        Assert.assertNull(upgradedVersions.get(refXjc)); // no change
         Assert.assertNull(upgradedVersions.get(refJunit)); // ignored scope
     }
 
@@ -186,6 +190,25 @@ public class DependencyEvaluatorTestCase {
 
         Optional<Version> latest = evaluator.findLatest(dependency, restrictions, availableVersions);
         Assert.assertFalse(latest.isPresent());
+    }
+
+    @Test
+    public void testCombinationOfSPAndRedHatSuffix() throws Exception {
+        GenericVersionScheme scheme = new GenericVersionScheme();
+
+        List<Version> availableVersions = new ArrayList<>();
+        availableVersions.add(scheme.parseVersion("1.3.16.SP1-redhat-6"));
+        availableVersions.add(scheme.parseVersion("1.3.16.redhat-3"));
+        availableVersions.add(scheme.parseVersion("1.3.16.SP1"));
+        availableVersions.add(scheme.parseVersion("1.3.16"));
+
+        SimpleScopedArtifactRef dependency =
+                new SimpleScopedArtifactRef("test", "test", "1.3.16", "jar", null, "compile");
+
+
+        Optional<Version> latest = evaluator.findLatest(dependency, Collections.emptyList(), availableVersions);
+        Assert.assertTrue(latest.isPresent());
+        Assert.assertEquals("1.3.16.SP1-redhat-6", latest.get().toString());
     }
 
     private ScopedArtifactRef newDependency(String version) {

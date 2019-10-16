@@ -7,7 +7,7 @@ import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.VersionStream;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
-import org.jboss.set.mavendependencyupdater.rules.Version;
+import org.jboss.set.mavendependencyupdater.rules.TokenizedVersion;
 
 import java.io.File;
 import java.io.IOException;
@@ -70,7 +70,7 @@ public class ConfigurationGenerator {
     }
 
     private Map<String, Object> ruleFromVersion(ArtifactRef ref) {
-        Version v = Version.parse(ref.getVersionString());
+        TokenizedVersion v = TokenizedVersion.parse(ref.getVersionString());
         String q = v.getQualifier();
         if (!isEmpty(q)) {
             if (q.equals("Final")) {
@@ -122,7 +122,7 @@ public class ConfigurationGenerator {
      * @param version original version
      * @return rule definition
      */
-    private Map<String, Object> latestSP(Version version) {
+    private Map<String, Object> latestSP(TokenizedVersion version) {
         return prefixAndQualifier(version, "SP\\d+");
     }
 
@@ -134,7 +134,7 @@ public class ConfigurationGenerator {
      * @param qualifier regular expression pattern
      * @return rule definition
      */
-    private Map<String, Object> prefixAndQualifier(Version version, String qualifier) {
+    private Map<String, Object> prefixAndQualifier(TokenizedVersion version, String qualifier) {
         int numericalSegments = version.getNumericalSegments().length;
         return new RuleBuilder()
                 .prefix(version.getPrefix(numericalSegments))
@@ -150,7 +150,7 @@ public class ConfigurationGenerator {
      * @param qualifiers regular expression patterns
      * @return rule definition
      */
-    private Map<String, Object> latestWithQualifier(Version version, String... qualifiers) {
+    private Map<String, Object> latestWithQualifier(TokenizedVersion version, String... qualifiers) {
         int numericalSegments = version.getNumericalSegments().length;
         return new RuleBuilder()
                 .prefix(version.getPrefix(Integer.max(2, numericalSegments - 1)))
@@ -172,7 +172,7 @@ public class ConfigurationGenerator {
      * @param version original version
      * @return rule definition
      */
-    private Map<String, Object> latest(Version version) {
+    private Map<String, Object> latest(TokenizedVersion version) {
         int numericalSegments = version.getNumericalSegments().length;
         return new RuleBuilder()
                 .prefix(version.getPrefix(Integer.max(2, numericalSegments - 1)))

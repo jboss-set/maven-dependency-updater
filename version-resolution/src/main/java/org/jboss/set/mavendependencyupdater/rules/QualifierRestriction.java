@@ -18,7 +18,7 @@ public class QualifierRestriction extends AbstractExpressionMatchingRestriction 
 
     @Override
     public boolean applies(String version, String originalVersion) {
-        String qualifier = Version.parse(version).getQualifier();
-        return matches(qualifier, true);
+        String qualifier = TokenizedVersion.parse(version).getQualifier();
+        return matches(qualifier);
     }
 }
