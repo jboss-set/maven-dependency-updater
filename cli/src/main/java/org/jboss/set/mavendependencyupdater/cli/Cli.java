@@ -9,7 +9,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.AvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DefaultAvailableVersionsResolver;
@@ -25,7 +24,7 @@ import org.jboss.set.mavendependencyupdater.projectparser.PmeDependencyCollector
 
 import java.io.File;
 import java.util.Collection;
-import java.util.Map;
+import java.util.List;
 
 public class Cli {
 
@@ -133,7 +132,12 @@ public class Cli {
             success = performAlignment(strategy);
         } else if (GENERATE_REPORT.equals(arguments[0])) {
             configuration = new Configuration(configurationFile);
-            UpgradeProcessingStrategy strategy = new TextReportProcessingStrategy(configuration, pomFile, cmd.getOptionValue('o'));
+            UpgradeProcessingStrategy strategy;
+            if (cmd.hasOption('o')) {
+                strategy = new TextReportProcessingStrategy(configuration, pomFile, cmd.getOptionValue('o'));
+            } else {
+                strategy = new TextReportProcessingStrategy(configuration, pomFile);
+            }
             success = performAlignment(strategy);
         } else if (GENERATE_CONFIG.equals(arguments[0])) {
             new ConfigurationGenerator().generateDefautlConfig(configurationFile, rootProjectDependencies);
@@ -184,8 +188,8 @@ public class Cli {
 
         AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver(configuration);
         DependencyEvaluator evaluator = new DependencyEvaluator(configuration, availableVersionsResolver);
-        Map<ArtifactRef, DependencyEvaluator.ComponentUpgrade> newVersions = evaluator.getVersionsToUpgrade(rootProjectDependencies);
-        return strategy.process(newVersions);
+        List<DependencyEvaluator.ComponentUpgrade> componentUpgrades = evaluator.getVersionsToUpgrade(rootProjectDependencies);
+        return strategy.process(componentUpgrades);
     }
 
 }

@@ -5,6 +5,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.URIish;
+import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.jboss.set.mavendependencyupdater.git.GitRepository;
 import org.junit.Assert;
@@ -82,8 +83,8 @@ public class SeparatePRsProcessingStrategyTestCase {
     @Test
     public void testGeneratedBranches() throws IOException, GitAPIException {
         // first component upgrade
-        strategy.createPRForUpgrade(SimpleArtifactRef.parse("org.jboss.logging:jboss-logging:3.4.0.Final"),
-                "3.4.1.Final");
+        strategy.createPRForUpgrade(new DependencyEvaluator.ComponentUpgrade(
+                SimpleArtifactRef.parse("org.jboss.logging:jboss-logging:3.4.0.Final"), "3.4.1.Final", null));
 
         // check that the branch was created and pushed to the origin repo
         Assert.assertTrue(originRepo.getLocalBranches()
@@ -96,8 +97,8 @@ public class SeparatePRsProcessingStrategyTestCase {
                 .contains("<version.jboss-logging>3.4.1.Final</version.jboss-logging>"));
 
         // second component upgrade, version defined by the same variable, i.e. would be identical to the first one
-        strategy.createPRForUpgrade(SimpleArtifactRef.parse("org.jboss.logging:jboss-logging-annotations:3.4.0.Final"),
-                "3.4.1.Final");
+        strategy.createPRForUpgrade(new DependencyEvaluator.ComponentUpgrade(
+                SimpleArtifactRef.parse("org.jboss.logging:jboss-logging-annotations:3.4.0.Final"), "3.4.1.Final", null));
 
         // no new branch should have been created
         Assert.assertEquals(1, originRepo.getLocalBranches().size());

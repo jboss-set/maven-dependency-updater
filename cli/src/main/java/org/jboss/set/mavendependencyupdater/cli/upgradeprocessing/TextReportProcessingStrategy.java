@@ -1,23 +1,26 @@
 package org.jboss.set.mavendependencyupdater.cli.upgradeprocessing;
 
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
-import org.eclipse.jgit.api.errors.GitAPIException;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
+import org.jboss.set.mavendependencyupdater.LocatedDependency;
 import org.jboss.set.mavendependencyupdater.PomDependencyUpdater;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
-import org.jboss.set.mavendependencyupdater.git.GitRepository;
 
 import java.io.File;
-import java.io.IOException;
+import java.io.FileNotFoundException;
 import java.io.PrintStream;
+import java.net.URI;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
@@ -25,60 +28,69 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
     private static final Logger LOG = Logger.getLogger(TextReportProcessingStrategy.class);
 
     private File pomFile;
-    private String outputFileName;
-    private GitRepository gitRepository;
-    private PatchDigestRecorder digestRecorder = new PatchDigestRecorder();
     private Configuration configuration;
+    private Set<ModifiedProperty> recordedUpdates = new HashSet<>();
+    private PrintStream outputStream;
 
-    public TextReportProcessingStrategy(Configuration configuration, File pomFile, String outputFileName) {
+    public TextReportProcessingStrategy(Configuration configuration, File pomFile) {
+        this(configuration, pomFile, new PrintStream(System.out));
+    }
+
+    public TextReportProcessingStrategy(Configuration configuration, File pomFile, String outputFileName)
+            throws FileNotFoundException {
+        this(configuration, pomFile, new PrintStream(outputFileName));
+    }
+
+    public TextReportProcessingStrategy(Configuration configuration, File pomFile, PrintStream outputStream) {
         this.configuration = configuration;
         this.pomFile = pomFile;
-        this.outputFileName = outputFileName;
-        File gitDir = new File(pomFile.getParent(), ".git");
-        try {
-            this.gitRepository = new GitRepository(gitDir, null);
-        } catch (IOException e) {
-            throw new RuntimeException("Failure when reading git repository: " + gitDir, e);
-        }
+        this.outputStream = outputStream;
     }
 
     @Override
-    public boolean process(Map<ArtifactRef, DependencyEvaluator.ComponentUpgrade> upgrades) {
-        PrintStream outputStream = null;
+    public boolean process(List<DependencyEvaluator.ComponentUpgrade> upgrades) {
         try {
-            List<Map.Entry<ArtifactRef, DependencyEvaluator.ComponentUpgrade>> sortedEntries =
-                    upgrades.entrySet().stream().sorted(Comparator.comparing(Map.Entry::getKey))
-                            .collect(Collectors.toList());
-
-            if (sortedEntries.size() == 0) {
+            if (upgrades.size() == 0) {
                 LOG.info("No components to upgrade.");
                 return true;
             }
 
-            if (outputFileName != null) {
-                outputStream = new PrintStream(outputFileName);
-            } else {
-                outputStream = System.out;
-            }
+            List<DependencyEvaluator.ComponentUpgrade> sortedUpgrades =
+                    upgrades.stream().sorted(Comparator.comparing(DependencyEvaluator.ComponentUpgrade::getArtifact))
+                            .collect(Collectors.toList());
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss z yyyy-MM-dd");
             outputStream.println("Generated at " + formatter.format(ZonedDateTime.now()));
             outputStream.println();
             outputStream.println("Searched in following repositories:\n");
-            for (Map.Entry<String, String> entry: configuration.getRepositories().entrySet()) {
+            for (Map.Entry<String, String> entry : configuration.getRepositories().entrySet()) {
                 outputStream.println("* " + entry.getKey() + ": " + entry.getValue());
             }
             outputStream.println();
             outputStream.println("Possible upgrades:\n");
 
             int counter = 0;
-            for (Map.Entry<ArtifactRef, DependencyEvaluator.ComponentUpgrade> entry : sortedEntries) {
-                ArtifactRef artifact = entry.getKey();
-                String newVersion = entry.getValue().getNewVersion();
-                String repoId = entry.getValue().getRepository();
-                PomDependencyUpdater.upgradeDependencies(pomFile,
-                        Collections.singletonMap(artifact, new DependencyEvaluator.ComponentUpgrade(null, newVersion, null)));
+            URI uri = pomFile.toURI();
+            for (DependencyEvaluator.ComponentUpgrade upgrade : sortedUpgrades) {
+                Optional<LocatedDependency> locatedDependencyOpt =
+                        PomDependencyUpdater.locateDependency(pomFile, upgrade.getArtifact());
+                ArtifactRef artifact = upgrade.getArtifact();
+                String newVersion = upgrade.getNewVersion();
+                String repoId = upgrade.getRepository();
 
+                if (locatedDependencyOpt.isPresent()) {
+                    LocatedDependency locatedDependency = locatedDependencyOpt.get();
+                    boolean added = recordedUpdates.add(
+                            new ModifiedProperty(uri, locatedDependency.getProfile(), locatedDependency.getVersionProperty(), newVersion));
+                    if (added) {
+                        counter++;
+                        outputStream.println(String.format("%s:%s:%s -> %s (%s)",
+                                artifact.getGroupId(), artifact.getArtifactId(), artifact.getVersionString(), newVersion, repoId));
+                    }
+                }
+                /*ArtifactRef artifact = upgrade.getArtifact();
+                String newVersion = upgrade.getNewVersion();
+                String repoId = upgrade.getRepository();
                 Pair<ArtifactRef, String> previous = digestRecorder.recordPatchDigest(pomFile, artifact, newVersion);
                 gitRepository.resetLocalChanges();
 
@@ -86,7 +98,7 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
                     counter++;
                     outputStream.println(String.format("%s:%s:%s -> %s (%s)",
                             artifact.getGroupId(), artifact.getArtifactId(), artifact.getVersionString(), newVersion, repoId));
-                }
+                }*/
             }
 
             outputStream.println("\n" + counter + " items");
@@ -94,15 +106,50 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
         } catch (Exception e) {
             throw new RuntimeException("Report generation failed", e);
         } finally {
-            try {
-                gitRepository.resetLocalChanges();
-            } catch (GitAPIException e) {
-                LOG.error("Can't reset local changes", e);
-            }
-
             if (outputStream != null && outputStream != System.out) {
                 outputStream.close();
             }
+        }
+    }
+
+    private static class ModifiedProperty {
+
+        private URI pomUri;
+        private String profile;
+        private String propertyName;
+        private String newValue;
+
+        public ModifiedProperty(URI pomUri, String profile, String propertyName, String newValue) {
+            this.pomUri = pomUri;
+            this.profile = profile;
+            this.propertyName = propertyName;
+            this.newValue = newValue;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+
+            if (o == null || getClass() != o.getClass()) return false;
+
+            ModifiedProperty that = (ModifiedProperty) o;
+
+            return new EqualsBuilder()
+                    .append(pomUri, that.pomUri)
+                    .append(profile, that.profile)
+                    .append(propertyName, that.propertyName)
+                    .append(newValue, that.newValue)
+                    .isEquals();
+        }
+
+        @Override
+        public int hashCode() {
+            return new HashCodeBuilder(17, 37)
+                    .append(pomUri)
+                    .append(profile)
+                    .append(propertyName)
+                    .append(newValue)
+                    .toHashCode();
         }
     }
 }

@@ -18,9 +18,12 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
+import static org.jboss.set.mavendependencyupdater.LocatedDependency.Type.DEPENDENCY;
+import static org.jboss.set.mavendependencyupdater.LocatedDependency.Type.MANAGED_DEPENDENCY;
 import static org.jboss.set.mavendependencyupdater.common.AtlasUtils.newArtifactRef;
 
 public class PomDependencyUpdaterTestCase {
@@ -42,13 +45,13 @@ public class PomDependencyUpdaterTestCase {
 
     @Test
     public void testUpgradeDependencies() throws IOException, XMLStreamException, XmlPullParserException {
-        HashMap<ArtifactRef, DependencyEvaluator.ComponentUpgrade> deps = new HashMap<>();
-        deps.put(newArtifactRef("commons-cli", "commons-cli", "1.4"), newUpgrade("1.4.redhat-00001"));
-        deps.put(newArtifactRef("org.jboss.logging", "jboss-logging", "3.4.0"), newUpgrade("3.4.0.redhat-00001"));
-        deps.put(newArtifactRef("junit", "junit", "4.12"), newUpgrade("4.13.redhat-00001"));
-        deps.put(newArtifactRef("org.apache.maven", "maven-core", "3.5.0"), newUpgrade("3.5.0.redhat-00001"));
+        List<DependencyEvaluator.ComponentUpgrade> upgrades = new ArrayList<>();
+        upgrades.add(newUpgrade(newArtifactRef("commons-cli", "commons-cli", "1.4"), "1.4.redhat-00001"));
+        upgrades.add(newUpgrade(newArtifactRef("org.jboss.logging", "jboss-logging", "3.4.0"), "3.4.0.redhat-00001"));
+        upgrades.add(newUpgrade(newArtifactRef("junit", "junit", "4.12"), "4.13.redhat-00001"));
+        upgrades.add(newUpgrade(newArtifactRef("org.apache.maven", "maven-core", "3.5.0"), "3.5.0.redhat-00001"));
 
-        PomDependencyUpdater.upgradeDependencies(pomFile, deps);
+        PomDependencyUpdater.upgradeDependencies(pomFile, upgrades);
 
         Model model = new MavenXpp3Reader().read(new FileInputStream(pomFile));
 
@@ -84,7 +87,38 @@ public class PomDependencyUpdaterTestCase {
         Assert.assertEquals("3.5.0.redhat-00001", dependency.get().getVersion());
     }
 
-    private static DependencyEvaluator.ComponentUpgrade newUpgrade(String version) {
-        return new DependencyEvaluator.ComponentUpgrade(null, version, null);
+    @Test
+    public void testLocateDependency() throws IOException, XMLStreamException, XmlPullParserException {
+        Optional<LocatedDependency> locatedDependency =
+                PomDependencyUpdater.locateDependency(pomFile, newArtifactRef("commons-cli", "commons-cli", "1.4"));
+        Assert.assertTrue(locatedDependency.isPresent());
+        Assert.assertEquals(pomFile.toURI(), locatedDependency.get().getPom());
+        Assert.assertEquals(MANAGED_DEPENDENCY, locatedDependency.get().getType());
+        Assert.assertEquals("version.commons-cli", locatedDependency.get().getVersionProperty());
+
+        locatedDependency =
+                PomDependencyUpdater.locateDependency(pomFile, newArtifactRef("junit", "junit", "4.12"));
+        Assert.assertTrue(locatedDependency.isPresent());
+        Assert.assertEquals(pomFile.toURI(), locatedDependency.get().getPom());
+        Assert.assertEquals(MANAGED_DEPENDENCY, locatedDependency.get().getType());
+        Assert.assertNull(locatedDependency.get().getVersionProperty());
+
+        locatedDependency =
+                PomDependencyUpdater.locateDependency(pomFile, newArtifactRef("org.jboss.logging", "jboss-logging", "3.4.0.Final"));
+        Assert.assertTrue(locatedDependency.isPresent());
+        Assert.assertEquals(pomFile.toURI(), locatedDependency.get().getPom());
+        Assert.assertEquals(DEPENDENCY, locatedDependency.get().getType());
+        Assert.assertEquals("version.jboss-logging", locatedDependency.get().getVersionProperty());
+
+        locatedDependency =
+                PomDependencyUpdater.locateDependency(pomFile, newArtifactRef("org.apache.maven", "maven-core", "3.5.0"));
+        Assert.assertTrue(locatedDependency.isPresent());
+        Assert.assertEquals(pomFile.toURI(), locatedDependency.get().getPom());
+        Assert.assertEquals(DEPENDENCY, locatedDependency.get().getType());
+        Assert.assertNull(locatedDependency.get().getVersionProperty());
+    }
+
+    private static DependencyEvaluator.ComponentUpgrade newUpgrade(ArtifactRef artifact, String newVersion) {
+        return new DependencyEvaluator.ComponentUpgrade(artifact, newVersion, null);
     }
 }

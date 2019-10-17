@@ -19,7 +19,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -69,11 +68,11 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
     }
 
     @Override
-    public boolean process(Map<ArtifactRef, DependencyEvaluator.ComponentUpgrade> upgrades) {
+    public boolean process(List<DependencyEvaluator.ComponentUpgrade> upgrades) {
         boolean result = true;
 
-        for (Map.Entry<ArtifactRef, DependencyEvaluator.ComponentUpgrade> entry : upgrades.entrySet()) {
-            boolean partialResult = createPRForUpgrade(entry.getKey(), entry.getValue().getNewVersion());
+        for (DependencyEvaluator.ComponentUpgrade upgrade : upgrades) {
+            boolean partialResult = createPRForUpgrade(upgrade);
             result = partialResult && result;
         }
 
@@ -81,11 +80,14 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
     }
 
     /**
-     * @param artifact artifact to upgrade
-     * @param newVersion version to upgrade to
+     * Upgrades a component in pom.xml
+     *
+     * @param componentUpgrade component upgrade
      * @return success?
      */
-    protected boolean createPRForUpgrade(ArtifactRef artifact, String newVersion) {
+    protected boolean createPRForUpgrade(DependencyEvaluator.ComponentUpgrade componentUpgrade) {
+        ArtifactRef artifact = componentUpgrade.getArtifact();
+        String newVersion = componentUpgrade.getNewVersion();
         String baseBranch = configuration.getGit().getBaseBranch();
         String workingBranch = getBranchName(artifact, newVersion);
         String commitMessage = getCommitMessage(artifact, newVersion);
@@ -117,8 +119,7 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
             gitRepository.checkout(baseBranch);
 
             // perform single upgrade
-            PomDependencyUpdater.upgradeDependencies(pomFile,
-                    Collections.singletonMap(artifact, new DependencyEvaluator.ComponentUpgrade(null, newVersion, null)));
+            PomDependencyUpdater.upgradeDependencies(pomFile, Collections.singletonList(componentUpgrade));
 
             // verify that the patch is unique to the already performed ones
             Pair<ArtifactRef, String> previousUpgrade = digestRecorder.recordPatchDigest(pomFile, artifact, newVersion);

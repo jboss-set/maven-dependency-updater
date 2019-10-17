@@ -1,11 +1,10 @@
 package org.jboss.set.mavendependencyupdater.cli.upgradeprocessing;
 
-import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
 import org.jboss.set.mavendependencyupdater.PomDependencyUpdater;
 
 import java.io.File;
-import java.util.Map;
+import java.util.List;
 
 /**
  * Performs all component upgrades locally. Doesn't commit and push anything.
@@ -18,7 +17,7 @@ public class ModifyLocallyProcessingStrategy implements UpgradeProcessingStrateg
     }
 
     @Override
-    public boolean process(Map<ArtifactRef, DependencyEvaluator.ComponentUpgrade> upgrades) {
+    public boolean process(List<DependencyEvaluator.ComponentUpgrade> upgrades) {
         try {
             PomDependencyUpdater.upgradeDependencies(pomFile, upgrades);
             return true;

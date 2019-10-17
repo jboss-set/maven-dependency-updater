@@ -1,6 +1,5 @@
 package org.jboss.set.mavendependencyupdater;
 
-import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.eclipse.aether.util.version.GenericVersionScheme;
 import org.eclipse.aether.version.InvalidVersionSpecificationException;
 import org.eclipse.aether.version.Version;
@@ -26,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.jboss.set.mavendependencyupdater.VersionStream.MICRO;
@@ -64,22 +62,18 @@ public class DependencyEvaluatorTestCase {
     public void testGetVersionsToUpgrade() {
         ArrayList<ScopedArtifactRef> artifactRefs = new ArrayList<>();
 
-        ScopedArtifactRef refMessaging, refCore, refPicketlink, refXjc, refJunit;
+        artifactRefs.add(newScopedArtifactRef("org.wildfly", "wildfly-messaging", "1.1.1", "compile"));
+        artifactRefs.add(newScopedArtifactRef("org.picketlink", "picketlink-impl", "1.1.1.SP01", "compile"));
+        artifactRefs.add(newScopedArtifactRef("org.wildfly", "wildfly-core", "10.0.0.Beta1", "compile"));
+        artifactRefs.add(newScopedArtifactRef("org.apache.cxf.xjc-utils", "cxf-xjc-runtime", "3.2.3.redhat-00002", "compile"));
+        artifactRefs.add(newScopedArtifactRef("junit", "junit", "4.8", "test"));
 
-        artifactRefs.add(refMessaging = newScopedArtifactRef("org.wildfly", "wildfly-messaging", "1.1.1", "compile"));
-        artifactRefs.add(refPicketlink = newScopedArtifactRef("org.picketlink", "picketlink-impl", "1.1.1.SP01", "compile"));
-        artifactRefs.add(refCore = newScopedArtifactRef("org.wildfly", "wildfly-core", "10.0.0.Beta1", "compile"));
-        artifactRefs.add(refXjc = newScopedArtifactRef("org.apache.cxf.xjc-utils", "cxf-xjc-runtime", "3.2.3.redhat-00002", "compile"));
-        artifactRefs.add(refJunit = newScopedArtifactRef("junit", "junit", "4.8", "test"));
+        List<DependencyEvaluator.ComponentUpgrade> componentUpgrades = evaluator.getVersionsToUpgrade(artifactRefs);
 
-        Map<ArtifactRef, DependencyEvaluator.ComponentUpgrade> upgradedVersions =
-                evaluator.getVersionsToUpgrade(artifactRefs);
-
-        Assert.assertEquals("1.2.0", upgradedVersions.get(refMessaging).getNewVersion());
-        Assert.assertEquals("1.1.1.SP02", upgradedVersions.get(refPicketlink).getNewVersion());
-        Assert.assertEquals("10.0.0.Beta2", upgradedVersions.get(refCore).getNewVersion());
-        Assert.assertNull(upgradedVersions.get(refXjc)); // no change
-        Assert.assertNull(upgradedVersions.get(refJunit)); // ignored scope
+        Assert.assertEquals(3, componentUpgrades.size());
+        Assert.assertEquals("1.2.0", componentUpgrades.get(0).getNewVersion());
+        Assert.assertEquals("1.1.1.SP02", componentUpgrades.get(1).getNewVersion());
+        Assert.assertEquals("10.0.0.Beta2", componentUpgrades.get(2).getNewVersion());
     }
 
 

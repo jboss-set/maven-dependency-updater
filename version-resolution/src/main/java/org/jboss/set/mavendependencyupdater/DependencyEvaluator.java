@@ -15,11 +15,10 @@ import org.jboss.set.mavendependencyupdater.rules.TokenizedVersion;
 import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
 import org.jboss.set.mavendependencyupdater.rules.VersionStreamRestriction;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -44,8 +43,8 @@ public class DependencyEvaluator {
      *
      * @return returns map "G:A" => Pair[newVersion, repoUrl]
      */
-    public Map<ArtifactRef, ComponentUpgrade> getVersionsToUpgrade(Collection<ScopedArtifactRef> dependencies) {
-        Map<ArtifactRef, ComponentUpgrade> versionsToUpgrade = new HashMap<>();
+    public List<ComponentUpgrade> getVersionsToUpgrade(Collection<ScopedArtifactRef> dependencies) {
+        List<ComponentUpgrade> versionsToUpgrade = new ArrayList<>();
         configUpToDate = true;
 
         for (ScopedArtifactRef dep : dependencies) {
@@ -74,7 +73,7 @@ public class DependencyEvaluator {
                     String latestStr = latest.get().toString();
                     String repoId = versionRangeResult.getRepository(latest.get()).getId();
                     LOG.infof("Found possible upgrade of '%s' to '%s' in repo '%s'", dep, latestStr, repoId);
-                    versionsToUpgrade.put(dep, new ComponentUpgrade(dep, latestStr, repoId));
+                    versionsToUpgrade.add(new ComponentUpgrade(dep, latestStr, repoId));
                 } else {
                     LOG.debugf("  => no change");
                 }
