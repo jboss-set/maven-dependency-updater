@@ -118,6 +118,25 @@ public class PomDependencyUpdaterTestCase {
         Assert.assertNull(locatedDependency.get().getVersionProperty());
     }
 
+    @Test
+    public void testFollowCircularProperties() {
+        Model model = new Model();
+        model.getProperties().put("prop0", "${prop1}");
+        model.getProperties().put("prop1", "${prop2}");
+        model.getProperties().put("prop2", "${prop3}");
+        model.getProperties().put("prop3", "${prop1}");
+        Assert.assertEquals("prop0", PomDependencyUpdater.followTransitiveProperties("prop0", model));
+    }
+
+    @Test
+    public void testFollowProperties() {
+        Model model = new Model();
+        model.getProperties().put("prop1", "${prop2}");
+        model.getProperties().put("prop2", "${prop3}");
+        model.getProperties().put("prop3", "value");
+        Assert.assertEquals("prop3", PomDependencyUpdater.followTransitiveProperties("prop1", model));
+    }
+
     private static DependencyEvaluator.ComponentUpgrade newUpgrade(ArtifactRef artifact, String newVersion) {
         return new DependencyEvaluator.ComponentUpgrade(artifact, newVersion, null);
     }

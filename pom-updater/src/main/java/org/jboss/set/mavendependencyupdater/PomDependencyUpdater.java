@@ -19,8 +19,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BiFunction;
 
 import static org.jboss.set.mavendependencyupdater.LocatedDependency.Type.DEPENDENCY;
@@ -113,10 +115,21 @@ public class PomDependencyUpdater {
         }
     }
 
-    private static String followTransitiveProperties(String propertyName, Model model) {
+    static String followTransitiveProperties(String propertyName, Model model) {
+        return followTransitiveProperties(propertyName, model, new LinkedHashSet<>());
+    }
+
+    private static String followTransitiveProperties(String propertyName, Model model, Set<String> discoveredProperties) {
+        if (!discoveredProperties.add(propertyName)) {
+            LOG.warnf("Can't resolve property - circular property chain detected: %s, %s",
+                    discoveredProperties, propertyName);
+            return discoveredProperties.iterator().next(); // circular reference, return the first property name
+        }
+
         String value = model.getProperties().getProperty(propertyName);
         if (MavenUtils.isProperty(value)) {
-            return followTransitiveProperties(MavenUtils.extractPropertyName(value), model);
+            String referencedPropertyName = MavenUtils.extractPropertyName(value);
+            return followTransitiveProperties(referencedPropertyName, model, discoveredProperties);
         } else {
             return propertyName;
         }
