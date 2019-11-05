@@ -23,6 +23,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Prints upgradable dependencies report to stdout or to given file.
+ *
+ * Non tread safe.
+ */
 public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
 
     private static final Logger LOG = Logger.getLogger(TextReportProcessingStrategy.class);
@@ -31,20 +36,35 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
     private Configuration configuration;
     private Set<ModifiedProperty> recordedUpdates = new HashSet<>();
     private PrintStream outputStream;
+    private File outputFile;
 
-    public TextReportProcessingStrategy(Configuration configuration, File pomFile) {
-        this(configuration, pomFile, new PrintStream(System.out));
+    TextReportProcessingStrategy(Configuration configuration, File pomFile) {
+        this.configuration = configuration;
+        this.pomFile = pomFile;
     }
 
-    public TextReportProcessingStrategy(Configuration configuration, File pomFile, String outputFileName)
-            throws FileNotFoundException {
-        this(configuration, pomFile, new PrintStream(outputFileName));
+    public TextReportProcessingStrategy(Configuration configuration, File pomFile, String outputFileName) {
+        this(configuration, pomFile);
+        this.outputFile = new File(outputFileName);
     }
 
     public TextReportProcessingStrategy(Configuration configuration, File pomFile, PrintStream outputStream) {
-        this.configuration = configuration;
-        this.pomFile = pomFile;
+        this(configuration, pomFile);
         this.outputStream = outputStream;
+    }
+
+    private void initOutputStream() {
+        try {
+            if (this.outputStream == null) {
+                if (this.outputFile == null) {
+                    this.outputStream = System.out;
+                } else {
+                    this.outputStream = new PrintStream(this.outputFile);
+                }
+            }
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException("Can't create output stream", e);
+        }
     }
 
     @Override
@@ -54,6 +74,7 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
                 LOG.info("No components to upgrade.");
                 return true;
             }
+            initOutputStream();
 
             List<DependencyEvaluator.ComponentUpgrade> sortedUpgrades =
                     upgrades.stream().sorted(Comparator.comparing(DependencyEvaluator.ComponentUpgrade::getArtifact))
@@ -88,17 +109,6 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
                                 artifact.getGroupId(), artifact.getArtifactId(), artifact.getVersionString(), newVersion, repoId));
                     }
                 }
-                /*ArtifactRef artifact = upgrade.getArtifact();
-                String newVersion = upgrade.getNewVersion();
-                String repoId = upgrade.getRepository();
-                Pair<ArtifactRef, String> previous = digestRecorder.recordPatchDigest(pomFile, artifact, newVersion);
-                gitRepository.resetLocalChanges();
-
-                if (previous == null) {
-                    counter++;
-                    outputStream.println(String.format("%s:%s:%s -> %s (%s)",
-                            artifact.getGroupId(), artifact.getArtifactId(), artifact.getVersionString(), newVersion, repoId));
-                }*/
             }
 
             outputStream.println("\n" + counter + " items");
@@ -119,7 +129,7 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
         private String propertyName;
         private String newValue;
 
-        public ModifiedProperty(URI pomUri, String profile, String propertyName, String newValue) {
+        ModifiedProperty(URI pomUri, String profile, String propertyName, String newValue) {
             this.pomUri = pomUri;
             this.profile = profile;
             this.propertyName = propertyName;

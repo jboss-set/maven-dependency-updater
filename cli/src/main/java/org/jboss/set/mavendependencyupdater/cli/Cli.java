@@ -136,7 +136,7 @@ public class Cli {
             if (cmd.hasOption('o')) {
                 strategy = new TextReportProcessingStrategy(configuration, pomFile, cmd.getOptionValue('o'));
             } else {
-                strategy = new TextReportProcessingStrategy(configuration, pomFile);
+                strategy = new TextReportProcessingStrategy(configuration, pomFile, System.out);
             }
             success = performAlignment(strategy);
         } else if (GENERATE_CONFIG.equals(arguments[0])) {
