@@ -45,7 +45,12 @@ public class Configuration {
 
     public Configuration(File file) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        ConfigurationModel data = mapper.readValue(file, ConfigurationModel.class);
+        ConfigurationModel data;
+        if (file != null) {
+            data = mapper.readValue(file, ConfigurationModel.class);
+        } else {
+            data = new ConfigurationModel();
+        }
 
         this.gitHub = data.getGitHub();
         this.git = data.getGit();

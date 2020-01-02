@@ -106,12 +106,10 @@ public class Cli {
             return 10;
         }
 
-        if (!cmd.hasOption('c')) {
-            System.err.println("Missing option 'c'");
-            printHelp();
-            return 10;
+        File configurationFile = null;
+        if (cmd.hasOption('c')) {
+            configurationFile = new File(cmd.getOptionValue('c'));
         }
-        File configurationFile = new File(cmd.getOptionValue('c'));
 
         if (!cmd.hasOption('f')) {
             System.err.println("Missing option 'f'");

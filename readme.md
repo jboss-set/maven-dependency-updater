@@ -12,7 +12,7 @@ It is also possible to specify maven repositories which should be used to look u
 ## Usage
 
 ```bash
-java -jar <path/to/alignment-cli.jar> <action> -c <path/co/configuration.json> -f <path/to/pom.xml>
+java -jar <path/to/alignment-cli.jar> <action> -f <path/to/pom.xml> [-c <path/to/configuration.json>] [-o output-file.txt]
 ```
 
 - alignment-cli.jar file is generated during build in `$SOURCE_DIR/cli/target/`,
@@ -20,10 +20,10 @@ java -jar <path/to/alignment-cli.jar> <action> -c <path/co/configuration.json> -
 
 ### Usage Examples
 
-Generate text report with possible dependency upgrades:
+Generate text report with possible dependency upgrades to an output file `report.txt`:
 
 ```bash
-$ java -jar $CLI_JAR generate-report -c path/to/configuration.json -f path/to/pom.xml
+$ java -jar cli/target/alignment-cli-0.3.jar generate-report -c path/to/configuration.json -f path/to/pom.xml -o report.txt
 ```
 
 Perform possible dependency upgrades in the POM:
@@ -34,7 +34,7 @@ $ java -jar $CLI_JAR perform-upgrades -c path/to/configuration.json -f path/to/p
 
 ## Configuration
 
-A configuration file containing alignment rules must be prepared.
+An optional configuration file containing alignment rules can be prepared.
 
 Example `configuration.json`:
 
@@ -117,7 +117,9 @@ but not "1.3.0.Final" or "1.2.3.Beta1".
 
 ## Limitations
 
-* In a multi-module project, only the single POM file specified in "-c" parameter is processed, no parent or nested POMs. 
-  I.e. the tool needs to be run separately for each POM which needs to be processed.
+Following items are on a TODO list:
+
+* In a multi-module project, only the single POM file specified in the "-c" parameter is processed. Parent or nested POMs are not. 
+  This behaviour is considered "good enough" for now, as most projects have dependency versions managed in a BOM or a parent POM. 
 * Dependencies defined in profiles are not processed.
 * Plugins are not processed.
