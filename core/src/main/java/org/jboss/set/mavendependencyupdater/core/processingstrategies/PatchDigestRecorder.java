@@ -1,4 +1,4 @@
-package org.jboss.set.mavendependencyupdater.cli.upgradeprocessing;
+package org.jboss.set.mavendependencyupdater.core.processingstrategies;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.tuple.Pair;

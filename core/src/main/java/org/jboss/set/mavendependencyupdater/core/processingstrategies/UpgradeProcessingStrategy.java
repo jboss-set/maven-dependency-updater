@@ -1,4 +1,4 @@
-package org.jboss.set.mavendependencyupdater.cli.upgradeprocessing;
+package org.jboss.set.mavendependencyupdater.core.processingstrategies;
 
 import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
 

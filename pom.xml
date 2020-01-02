@@ -44,6 +44,7 @@
         <module>pom-updater</module>
         <module>commons</module>
         <module>git-manipulator</module>
+        <module>core</module>
     </modules>
 
     <dependencyManagement>
@@ -72,6 +73,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>git-manipulator</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>core</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

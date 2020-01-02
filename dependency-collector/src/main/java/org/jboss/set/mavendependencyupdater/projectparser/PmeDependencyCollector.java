@@ -5,20 +5,8 @@ import org.apache.maven.artifact.repository.MavenArtifactRepository;
 import org.apache.maven.execution.DefaultMavenExecutionRequest;
 import org.apache.maven.execution.DefaultMavenExecutionResult;
 import org.apache.maven.execution.MavenExecutionRequest;
-import org.apache.maven.execution.MavenExecutionRequestPopulationException;
-import org.apache.maven.execution.MavenExecutionRequestPopulator;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
-import org.apache.maven.model.Profile;
-import org.apache.maven.model.profile.DefaultProfileActivationContext;
-import org.apache.maven.model.profile.ProfileActivationContext;
-import org.apache.maven.model.profile.ProfileSelector;
-import org.apache.maven.settings.Settings;
-import org.apache.maven.settings.SettingsUtils;
-import org.apache.maven.settings.building.DefaultSettingsBuildingRequest;
-import org.apache.maven.settings.building.SettingsBuilder;
-import org.apache.maven.settings.building.SettingsBuildingException;
-import org.apache.maven.settings.building.SettingsBuildingResult;
 import org.codehaus.plexus.DefaultContainerConfiguration;
 import org.codehaus.plexus.DefaultPlexusContainer;
 import org.codehaus.plexus.PlexusConstants;
@@ -28,7 +16,6 @@ import org.codehaus.plexus.component.repository.exception.ComponentLookupExcepti
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectRef;
 import org.commonjava.maven.atlas.ident.ref.ProjectVersionRef;
-import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
 import org.commonjava.maven.atlas.ident.ref.SimpleProjectRef;
 import org.commonjava.maven.atlas.ident.ref.SimpleProjectVersionRef;
 import org.commonjava.maven.ext.common.ManipulationException;
@@ -40,7 +27,6 @@ import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.common.ident.SimpleScopedArtifactRef;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -53,9 +39,6 @@ import java.util.stream.Collectors;
  * Retrieves information about maven project dependencies.
  */
 public class PmeDependencyCollector {
-
-    private static final File DEFAULT_GLOBAL_SETTINGS_FILE =
-            new File(System.getenv("M2_HOME"), "conf/settings.xml");
 
     private static final Logger LOG = Logger.getLogger(PmeDependencyCollector.class);
 
@@ -142,7 +125,6 @@ public class PmeDependencyCollector {
 
             pomIO = container.lookup(PomIO.class);
             session = container.lookup(ManipulationSession.class);
-//            manipulationManager = container.lookup(ManipulationManager.class);
 
             final MavenExecutionRequest req = new DefaultMavenExecutionRequest().setSystemProperties(System.getProperties())
 //                    .setUserProperties(userProps)
@@ -162,22 +144,9 @@ public class PmeDependencyCollector {
             req.setUserSettingsFile(settings);
             req.setGlobalSettingsFile(settings);
 
-            MavenExecutionRequestPopulator executionRequestPopulator = container.lookup(MavenExecutionRequestPopulator.class);
-
-            executionRequestPopulator.populateFromSettings(req, parseSettings(settings));
-            executionRequestPopulator.populateDefaults(req);
-
             if (ar != null) {
                 ar.setUrl("file://" + req.getLocalRepositoryPath());
             }
-
-            /*if (userProps != null && userProps.containsKey("maven.repo.local")) {
-                if (ar == null) {
-                    ar = new MavenArtifactRepository();
-                }
-                ar.setUrl("file://" + userProps.getProperty("maven.repo.local"));
-                req.setLocalRepository(ar);
-            }*/
 
             final MavenSession mavenSession = new MavenSession(container, null, req, new DefaultMavenExecutionResult());
 
@@ -186,51 +155,11 @@ public class PmeDependencyCollector {
             session.setMavenSession(mavenSession);
         } catch (ComponentLookupException | PlexusContainerException e) {
             throw new IllegalStateException("Caught problem instantiating PlexusContainer", e);
-        } catch (SettingsBuildingException e) {
-            throw new IllegalStateException("Caught problem parsing settings file ", e);
-        } catch (MavenExecutionRequestPopulationException e) {
-            throw new IllegalStateException("Caught problem populating maven request from settings file ", e);
         }
-    }
-
-    private Settings parseSettings(File settings) throws ComponentLookupException, SettingsBuildingException {
-        DefaultSettingsBuildingRequest settingsRequest = new DefaultSettingsBuildingRequest();
-        settingsRequest.setUserSettingsFile(settings);
-        settingsRequest.setGlobalSettingsFile(DEFAULT_GLOBAL_SETTINGS_FILE);
-        settingsRequest.setUserProperties(session.getUserProperties());
-        settingsRequest.setSystemProperties(System.getProperties());
-
-        SettingsBuilder settingsBuilder = container.lookup(SettingsBuilder.class);
-        SettingsBuildingResult settingsResult = settingsBuilder.build(settingsRequest);
-        Settings effectiveSettings = settingsResult.getEffectiveSettings();
-
-        ProfileSelector profileSelector = container.lookup(ProfileSelector.class);
-        ProfileActivationContext profileActivationContext =
-                new DefaultProfileActivationContext().setActiveProfileIds(effectiveSettings.getActiveProfiles());
-        List<Profile> modelProfiles = new ArrayList<>();
-        for (org.apache.maven.settings.Profile profile : effectiveSettings.getProfiles()) {
-            modelProfiles.add(SettingsUtils.convertFromSettingsProfile(profile));
-        }
-        List<Profile> activeModelProfiles =
-                profileSelector.getActiveProfiles(modelProfiles, profileActivationContext,
-                        modelProblemCollectorRequest -> {
-                            // ignore
-                        });
-        List<String> activeProfiles = new ArrayList<>();
-        for (org.apache.maven.model.Profile profile : activeModelProfiles) {
-            activeProfiles.add(profile.getId());
-        }
-        effectiveSettings.setActiveProfiles(activeProfiles);
-
-        return effectiveSettings;
     }
 
     private static ProjectRef toProjectRef(Project project) {
         return new SimpleProjectRef(project.getGroupId(), project.getArtifactId());
-    }
-
-    private static ArtifactRef toArtifactRef(Project project) {
-        return new SimpleArtifactRef(project.getGroupId(), project.getArtifactId(), project.getVersion(), null, null);
     }
 
     private static ProjectVersionRef toProjectVersionRef(Project project) {
