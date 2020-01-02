@@ -1,13 +1,15 @@
 # Maven Dependency Updater
 
-Experimental tool that reports possible dependency upgrades in a Maven project. The dependency upgrades can also be
-directly performed in the POM file, or a pull requests can be created.
+A tool that reports possible dependency upgrades in a Maven project. The dependency upgrades can also be
+directly performed in the POM file.
 
-It is possible to define per dependency "alignment rules" to limit which component upgrades should be reported - e.g.
-only to newer micro versions or to versions with certain qualifiers. 
+To limit which component upgrades should be reported, configuration file with per-dependency upgrade rules can be
+created. For example, it can be defined that we want certain dependency to be upgraded only to versions with particular
+prefix, and some other dependency only to versions with particular qualifier. The default behaviour is that only 
+upgrades to newer micro versions are reported. 
 
-It is also possible to specify maven repositories which should be used to look up new dependency versions
-(Maven Central by default).
+It can be also specified which maven repositories should be used to look up new dependency versions. By default
+the Maven Central repository is used.
 
 ## Usage
 
@@ -15,7 +17,7 @@ It is also possible to specify maven repositories which should be used to look u
 java -jar <path/to/alignment-cli.jar> <action> -f <path/to/pom.xml> [-c <path/to/configuration.json>] [-o output-file.txt]
 ```
 
-- alignment-cli.jar file is generated during build in `$SOURCE_DIR/cli/target/`,
+- alignment-cli-\<version\>.jar file is generated during build in `$SOURCE_DIR/cli/target/`,
 - `<action>` can be "generate-report" or "perform-upgrades".
 
 ### Usage Examples
@@ -34,7 +36,7 @@ $ java -jar $CLI_JAR perform-upgrades -c path/to/configuration.json -f path/to/p
 
 ## Configuration
 
-An optional configuration file containing alignment rules can be prepared.
+An optional configuration file containing upgrade rules can be prepared.
 
 Example `configuration.json`:
 
@@ -64,11 +66,11 @@ Example `configuration.json`:
 
 * `repositories`: A map of repositories where new dependency versions will be looked up.
 * `ignoreScopes`: A list of maven dependency scopes to be ignored.
-* `rules`: A map where keys are of the format "groupId:artifactId" and values are _alignment rules_.
+* `rules`: A map where keys are of the format "groupId:artifactId" and values are _upgrade rules_.
 
   `groupId` and `artifactId` can be a wildcard "*".
 
-  _Alignment rule_ is either:
+  _Upgrade rule_ is either:
   
   * a string "NEVER", which means never to upgrade given G:A.
   * a map which can contain with following keys:
@@ -82,7 +84,7 @@ Example `configuration.json`:
     * `MICRO` - upgrade to the latest MICRO version, MAJOR and MINOR must not change.
     * `QUALIFIER` - upgrade to the latest QUALIFIER version, MAJOR, MINOR and MICRO must not change.
     
-### Alignment Rules Examples
+### Upgrade Rules Examples
 
 ```json
   "groupId:artifactId": {
@@ -116,8 +118,6 @@ If an original dependency version is "1.2.3.Final", the rule matches candidate v
 but not "1.3.0.Final" or "1.2.3.Beta1".
 
 ## Limitations
-
-Following items are on a TODO list:
 
 * In a multi-module project, only the single POM file specified in the "-c" parameter is processed. Parent or nested POMs are not. 
   This behaviour is considered "good enough" for now, as most projects have dependency versions managed in a BOM or a parent POM. 
