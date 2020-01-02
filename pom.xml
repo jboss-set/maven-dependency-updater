@@ -45,6 +45,7 @@
         <module>commons</module>
         <module>git-manipulator</module>
         <module>core</module>
+        <module>dependency-reporter-maven-plugin</module>
     </modules>
 
     <dependencyManagement>
