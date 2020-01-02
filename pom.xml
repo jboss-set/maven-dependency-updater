@@ -24,7 +24,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        
+
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.compiler.source>1.8</maven.compiler.source>
 
@@ -151,11 +151,11 @@
             </dependency>
 
             <!-- Version processing -->
-            <dependency>
+            <!--<dependency>
                 <groupId>org.jboss.up.depres</groupId>
                 <artifactId>model</artifactId>
                 <version>0.1-SNAPSHOT</version>
-            </dependency>
+            </dependency>-->
 
             <!-- GIT -->
             <dependency>
@@ -206,5 +206,29 @@
             <artifactId>mockito-core</artifactId>
         </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>jdk19plus</id>
+            <activation>
+                <jdk>[1.9,)</jdk>
+            </activation>
+            <dependencyManagement>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.commonjava.maven.ext</groupId>
+                        <artifactId>pom-manipulation-core</artifactId>
+                        <version>${pmeVersion}</version>
+                        <exclusions>
+                            <exclusion>
+                                <groupId>com.sun</groupId>
+                                <artifactId>tools</artifactId>
+                            </exclusion>
+                        </exclusions>
+                    </dependency>
+                </dependencies>
+            </dependencyManagement>
+        </profile>
+    </profiles>
 
 </project>
