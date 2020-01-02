@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
         <groupId>org.jboss.set.dependency-alignment</groupId>
         <artifactId>maven-dependency-updater-parent</artifactId>
-        <version>0.3-SNAPSHOT</version>
+        <version>0.3</version>
     </parent>
 
     <artifactId>cli</artifactId>
@@ -52,7 +50,7 @@
                 <executions>
                     <execution>
                         <id>default-jar</id>
-                        <phase/>
+                        <phase />
                     </execution>
                 </executions>
             </plugin>
@@ -106,7 +104,7 @@
                     <mappings>
                         <mapping>
                             <directory>/usr/share/${artifactName}</directory>
-                            <artifact/>
+                            <artifact />
                             <filemode>644</filemode>
                             <username>root</username>
                             <groupname>root</groupname>
