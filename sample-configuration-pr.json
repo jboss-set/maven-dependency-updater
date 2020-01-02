@@ -1,0 +1,33 @@
+{
+  "git": {
+    "remote": "origin",
+    "baseBranch": "master"
+  },
+
+  "github": {
+    "originRepository": "TomasHofman/wildfly",
+    "upstreamRepository": "wildfly/wildfly",
+    "upstreamBaseBranch": "master",
+    "login": "joe",
+    "accessToken": "1234abcd"
+  },
+
+  "ignoreScopes": ["test"],
+
+  "rules": {
+    "com.google.code.gson:gson": {
+      "PREFIX": "2.7"
+    },
+    "org.picketlink:*": {
+      "PREFIX": "2.5.5",
+      "QUALIFIER": "SP\\d+"
+    },
+    "javax.enterprise:cdi-api": {
+      "PREFIX": "2.0",
+      "QUALIFIER": ["", "SP\\d+"]
+    },
+    "org.apache.directory.server:apacheds-all": {
+      "STREAM": "QUALIFIER"
+    }
+  }
+}

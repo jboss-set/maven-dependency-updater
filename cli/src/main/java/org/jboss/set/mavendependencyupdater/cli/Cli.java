@@ -30,12 +30,12 @@ public class Cli {
 
     private static final Logger LOG = Logger.getLogger(Cli.class);
 
-    private static final String ALIGN = "align";
+    private static final String PERFORM_UPGRADES = "perform-upgrades";
     private static final String GENERATE_PRS = "generate-prs";
     private static final String GENERATE_REPORT = "generate-report";
     private static final String GENERATE_CONFIG = "generate-config";
     private static final String CHECK_CONFIG = "check-config";
-    private static final String[] COMMANDS = {ALIGN, GENERATE_PRS, GENERATE_REPORT, GENERATE_CONFIG, CHECK_CONFIG};
+    private static final String[] COMMANDS = {PERFORM_UPGRADES, GENERATE_PRS, GENERATE_REPORT, GENERATE_CONFIG, CHECK_CONFIG};
 
     private static final String PREFIX_DOESNT_MATCH_MSG = "Dependency %s doesn't match prefix '%s'";
 
@@ -123,7 +123,7 @@ public class Cli {
         rootProjectDependencies = new PmeDependencyCollector(pomFile).getRootProjectDependencies();
 
         boolean success;
-        if (ALIGN.equals(arguments[0])) {
+        if (PERFORM_UPGRADES.equals(arguments[0])) {
             configuration = new Configuration(configurationFile);
             success = performAlignment(new ModifyLocallyProcessingStrategy(pomFile));
         } else if (GENERATE_PRS.equals(arguments[0])) {
@@ -165,10 +165,10 @@ public class Cli {
 
     private void printHelp() {
         String header = "\nCommands:\n" +
-                "  align              Locally aligns dependencies in given POM file\n" +
+                "  generate-report    Generates text report\n" +
+                "  perform-upgrades   Locally perform dependencies in given POM file\n" +
                 "  generate-prs       Aligns dependencies in given POM file and generates\n" +
                 "                     separate pull requests for each upgrade\n" +
-                "  generate-report    Generates text report\n" +
                 "  generate-config    Generates somewhat sane base for dependency alignment\n" +
                 "                     configuration for given project\n" +
                 "  check-config       Checks if configuration is up-to-date\n" +

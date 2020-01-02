@@ -1,8 +1,36 @@
 # Maven Dependency Updater
 
-Experimental tool that upgrades Maven project's dependencies according to defined rules.
+Experimental tool that reports possible dependency upgrades in a Maven project. The dependency upgrades can also be
+directly performed in the POM file, or a pull requests can be created.
 
-Dependency versions for upgrading are searched for in maven repositories (currently only Maven Central).
+It is possible to define per dependency "alignment rules" to limit which component upgrades should be reported - e.g.
+only to newer micro versions or to versions with certain qualifiers. 
+
+It is also possible to specify maven repositories which should be used to look up new dependency versions
+(Maven Central by default).
+
+## Usage
+
+```bash
+java -jar <path/to/alignment-cli.jar> <action> -c <path/co/configuration.json> -f <path/to/pom.xml>
+```
+
+- alignment-cli.jar file is generated during build in `$SOURCE_DIR/cli/target/`,
+- `<action>` can be "generate-report" or "perform-upgrades".
+
+### Usage Examples
+
+Generate text report with possible dependency upgrades:
+
+```bash
+$ java -jar $CLI_JAR generate-report -c path/to/configuration.json -f path/to/pom.xml
+```
+
+Perform possible dependency upgrades in the POM:
+
+```bash
+$ java -jar $CLI_JAR perform-upgrades -c path/to/configuration.json -f path/to/pom.xml
+```
 
 ## Configuration
 
@@ -12,39 +40,37 @@ Example `configuration.json`:
 
 ```json
 {
-  "git": {
-    "remote": "origin",
-    "baseBranch": "master"
+  "repositories" : {
+    "Central": "https://repo1.maven.org/maven2/",
+    "JBossPublic": "https://repository.jboss.org/nexus/content/repositories/public/"
   },
-
-  "github": {
-    "originRepository": "TomasHofman/wildfly",
-    "upstreamRepository": "wildfly/wildfly",
-    "login": "joe",
-    "accessToken": "1234abcd"
-  },
-
   "ignoreScopes": ["test"],
   "rules": {
-    "commons-cli:commons-cli": "MICRO",
+    "*:*": {
+      "STREAM": "MICRO"
+    },
+    "commons-cli:commons-cli": {
+      "STREAM": "MINOR"
+    },
     "org.picketlink:*": {
       "PREFIX": "2.5.5",
       "QUALIFIER": "SP\\d+"
     }
   }
 }
-
 ```
-* `ignoreScopes`: A list of maven dependency scopes that should be ignored.
+
+### Configuration keys
+
+* `repositories`: A map of repositories where new dependency versions will be looked up.
+* `ignoreScopes`: A list of maven dependency scopes to be ignored.
 * `rules`: A map where keys are of the format "groupId:artifactId" and values are _alignment rules_.
 
   `groupId` and `artifactId` can be a wildcard "*".
 
   _Alignment rule_ is either:
   
-  * a string, in which case it can have following values:
-    * `NEVER` - do not upgrade this G:A.
-    * a _stream name_.
+  * a string "NEVER", which means never to upgrade given G:A.
   * a map which can contain with following keys:
     * `PREFIX`: version prefix, e.g. "1.2.3", that candidate versions has to match.
     * `QUALIFIER`: a single regular expression pattern or a list of patterns, one of which must match a candidate versions' qualifier.
@@ -63,14 +89,14 @@ Example `configuration.json`:
     "PREFIX": "1.2.3"  
   }
 ```
-Matches candidate versions "1.2.3", "1.2.3.4.Final", but not "1.2.4" or "1.2.30".
+Matches dependency versions "1.2.3", "1.2.3.4.Final", but not "1.2.4" or "1.2.30".
   
 ```json
   "groupId:artifactId": {
     "QUALIFIER": ["Final", "Final-jbossorg-\\d+"]  
   }
 ```
-Matches candidate versions "1.2.Final", "1.2.3.Final-jbossorg-00001", but not "1.2" or "1.2.Beta1".
+Matches dependency versions "1.2.Final", "1.2.3.Final-jbossorg-00001", but not "1.2" or "1.2.Beta1".
 
 ```json
   "groupId:artifactId": {
@@ -78,7 +104,7 @@ Matches candidate versions "1.2.Final", "1.2.3.Final-jbossorg-00001", but not "1
     "QUALIFIER": "SP\\d+"  
   }
 ```
-Matches candidate versions "1.2.3.SP1", "1.2.3.4.SP10", but not "1.2.3" or "1.2.4.SP1".
+Matches dependency versions "1.2.3.SP1", "1.2.3.4.SP10", but not "1.2.3" or "1.2.4.SP1".
 
 ```json
   "groupId:artifactId": {
@@ -88,38 +114,10 @@ Matches candidate versions "1.2.3.SP1", "1.2.3.4.SP10", but not "1.2.3" or "1.2.
 ```
 If an original dependency version is "1.2.3.Final", the rule matches candidate versions "1.2.4.Final", "1.2.3.4.Final",
 but not "1.3.0.Final" or "1.2.3.Beta1".
-  
+
 ## Limitations
 
-* In a multi-module project, currently only the top level module dependencies are upgraded.
-* Dependencies defined in profiles are not upgraded.
-* Plugins are not upgraded.
-
-## Examples
-
-Align a project and create separate PRs for each component upgrade:
-
-```bash
-$ java -jar $CLI_JAR generate-prs -c path/to/configuration.json -f path/to/pom.xml
-```
-
-Align a local copy of a project, without committing/pushing changes to upstream repo:
-
-```bash
-$ java -jar $CLI_JAR align -c path/to/configuration.json -f path/to/pom.xml
-```
-
-Attempts to generate a sane default configuration for a project, which should then be reviewed and modified as needed:
-
-```bash
-$ java -jar $CLI_JAR generate-config -c path/to/configuration.json -f path/to/pom.xml
-```
-
-Check if version prefixes defined in configuration file still match versions in the pom (i.e. detects if the project
-has moved forward with dependency versions, and the configuration needs to be updated): 
-
-```bash
-$ java -jar $CLI_JAR check-config -c path/to/configuration.json -f path/to/pom.xml
-Dependency org.jboss.spec.javax.faces:jboss-jsf-api_2.3_spec:jar:2.3.9.SP02 doesn't match prefix '2.3.8'
-...
-```
+* In a multi-module project, only the single POM file specified in "-c" parameter is processed, no parent or nested POMs. 
+  I.e. the tool needs to be run separately for each POM which needs to be processed.
+* Dependencies defined in profiles are not processed.
+* Plugins are not processed.
