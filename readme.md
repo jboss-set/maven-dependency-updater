@@ -1,7 +1,7 @@
 # Maven Dependency Updater
 
-A tool that reports possible dependency upgrades in a Maven project. The dependency upgrades can also be
-directly performed in the POM file.
+This project provides a CLI tool and a maven plugin that report possible dependency upgrades in Maven projects.
+The dependency upgrades can also be directly performed in the POM file.
 
 To limit which component upgrades should be reported, configuration file with per-dependency upgrade rules can be
 created. For example, it can be defined that we want certain dependency to be upgraded only to versions with particular
@@ -11,7 +11,78 @@ upgrades to newer micro versions are reported.
 It can be also specified which maven repositories should be used to look up new dependency versions. By default
 the Maven Central repository is used.
 
-## Usage
+## Usage - Maven plugin
+
+Prerequisite: add the JBoss Releases repository as a plugin repository in your Maven project:
+
+```xml
+  <pluginRepositories>
+    <pluginRepository>
+      <id>jboss-releases-repository</id>
+      <name>JBoss Releases Repository</name>
+      <url>https://repository.jboss.org/nexus/content/repositories/releases/</url>
+    </pluginRepository>
+  </pluginRepositories>
+```
+
+Or instead you can add the plugin repository in your `${user.home}/.m2/settings.xml`:
+
+```xml
+<settings>
+  ...
+  <profiles>
+    ...
+    <profile>
+      <id>jboss-releases-repo-profile</id>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>jboss-releases-repo</id>
+          <name>JBoss Releases Repository</name>
+          <url>https://repository.jboss.org/nexus/content/repositories/releases/</url>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+    ...
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>jboss-releases-repo-profile</activeProfile>
+  </activeProfiles>
+</settings>
+```
+
+To generate reports:
+
+```bash
+mvn org.jboss.set.dependency-alignment:dependency-updater-maven-plugin:report
+```
+
+To perform dependency upgrades:
+
+```bash
+mvn org.jboss.set.dependency-alignment:dependency-updater-maven-plugin:perform-upgrades
+```
+
+In order to make the maven commands shorter, add the group "org.jboss.set.dependency-alignment" as a plugin group in your
+`${user.home}/.m2/settings.xml`: 
+
+```xml
+  <pluginGroups>
+    <pluginGroup>org.jboss.set.dependency-alignment</pluginGroup>
+  </pluginGroups>
+```
+
+After that, you can use plugin prefix:
+
+```bash
+mvn dependency-updater:report
+mvn dependency-updater:perform-upgrades
+```
+
+If you want to use specific configuration, place `dependency-upgrade-config.json` file into your root project directory.
+See "Configuration" section for more information about the configuration file options. 
+
+## Usage - CLI
 
 ```bash
 java -jar <path/to/alignment-cli.jar> <action> -f <path/to/pom.xml> [-c <path/to/configuration.json>] [-o output-file.txt]
