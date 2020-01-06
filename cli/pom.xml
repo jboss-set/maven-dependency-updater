@@ -66,52 +66,16 @@
                     </execution>
                 </executions>
             </plugin>
-
-            <!-- RPM creation -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>rpm-maven-plugin</artifactId>
-                <version>2.2.0</version>
-                <executions>
-                    <execution>
-                        <id>generate-rpm</id>
-                        <goals>
-                            <goal>rpm</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <group>JBoss SET/Tools</group>
-                    <packager>JBoss SET</packager>
-                    <name>${artifactName}</name>
-                    <mappings>
-                        <mapping>
-                            <directory>/usr/share/${artifactName}</directory>
-                            <artifact />
-                            <filemode>644</filemode>
-                            <username>root</username>
-                            <groupname>root</groupname>
-                        </mapping>
-                        <!-- to set +x mode on the directory -->
-                        <mapping>
-                            <directory>/usr/share/${artifactName}</directory>
-                            <filemode>755</filemode>
-                            <username>root</username>
-                            <groupname>root</groupname>
-                        </mapping>
-                    </mappings>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 
     <profiles>
-        <!-- disable RPM creation -->
+        <!-- enable RPM creation -->
         <profile>
-            <id>norpm</id>
+            <id>rpm</id>
             <activation>
                 <property>
-                    <name>norpm</name>
+                    <name>rpm</name>
                 </property>
             </activation>
             <build>
@@ -119,12 +83,36 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>rpm-maven-plugin</artifactId>
+                        <version>2.2.0</version>
                         <executions>
                             <execution>
                                 <id>generate-rpm</id>
-                                <phase>none</phase>
+                                <goals>
+                                    <goal>rpm</goal>
+                                </goals>
                             </execution>
                         </executions>
+                        <configuration>
+                            <group>JBoss SET/Tools</group>
+                            <packager>JBoss SET</packager>
+                            <name>${artifactName}</name>
+                            <mappings>
+                                <mapping>
+                                    <directory>/usr/share/${artifactName}</directory>
+                                    <artifact />
+                                    <filemode>644</filemode>
+                                    <username>root</username>
+                                    <groupname>root</groupname>
+                                </mapping>
+                                <!-- to set +x mode on the directory -->
+                                <mapping>
+                                    <directory>/usr/share/${artifactName}</directory>
+                                    <filemode>755</filemode>
+                                    <username>root</username>
+                                    <groupname>root</groupname>
+                                </mapping>
+                            </mappings>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
