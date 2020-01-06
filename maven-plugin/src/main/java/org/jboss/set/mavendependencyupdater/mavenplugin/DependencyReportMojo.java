@@ -27,7 +27,12 @@ public class DependencyReportMojo extends AbstractUpdaterMojo {
         TextReportProcessingStrategy strategy = new TextReportProcessingStrategy(configuration, pomFile, ps);
         strategy.process(componentUpgrades);
 
-        File reportFile = new File(project.getBuild().getDirectory(), REPORT_FILE);
+        File targetDirectory = new File(project.getBuild().getDirectory());
+        if (!targetDirectory.exists()) {
+            targetDirectory.mkdirs();
+        }
+
+        File reportFile = new File(targetDirectory, REPORT_FILE);
         try {
             baos.writeTo(new FileOutputStream(reportFile));
         } catch (IOException e) {
