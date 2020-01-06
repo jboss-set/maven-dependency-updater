@@ -12,6 +12,10 @@
     "accessToken": "1234abcd"
   },
 
+  "repositories": {
+    "Central": "https://repo1.maven.org/maven2/",
+  },
+
   "ignoreScopes": ["test"],
 
   "rules": {
