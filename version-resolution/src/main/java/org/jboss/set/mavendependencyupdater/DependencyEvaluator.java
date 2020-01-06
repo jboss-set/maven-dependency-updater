@@ -168,5 +168,11 @@ public class DependencyEvaluator {
         public String getRepository() {
             return repository;
         }
+
+        @Override
+        public String toString() {
+            return artifact.getGroupId() + ":" + artifact.getArtifactId() + ":" + artifact.getVersionString()
+                    + " -> " + newVersion;
+        }
     }
 }

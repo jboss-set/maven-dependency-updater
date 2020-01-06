@@ -5,10 +5,10 @@
     <parent>
         <groupId>org.jboss.set.dependency-alignment</groupId>
         <artifactId>maven-dependency-updater-parent</artifactId>
-        <version>0.4-SNAPSHOT</version>
+        <version>0.5-SNAPSHOT</version>
     </parent>
 
-    <artifactId>dependency-reporter-maven-plugin</artifactId>
+    <artifactId>dependency-updater-maven-plugin</artifactId>
     <packaging>maven-plugin</packaging>
 
     <dependencies>
@@ -28,11 +28,6 @@
             <version>3.5.2</version>
             <scope>provided</scope>
         </dependency>
-        <!--<dependency>
-            <groupId>org.apache.maven.shared</groupId>
-            <artifactId>maven-common-artifact-filters</artifactId>
-            <version>3.0.1</version>
-        </dependency>-->
     </dependencies>
 
 </project>
