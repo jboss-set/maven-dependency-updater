@@ -11,6 +11,15 @@ upgrades to newer micro versions are reported.
 It can be also specified which maven repositories should be used to look up new dependency versions. By default
 the Maven Central repository is used.
 
+- [Usage - Maven plugin](#usage---maven-plugin)
+- [Usage - CLI](#usage---cli)
+  - [CLI Usage examples](#cli-usage-examples)
+- [Configuration](#configuration)
+  - [Configuration Keys](#configuration-keys)
+  - [Upgrade Rules Examples](#upgrade-rules-examples)
+- [Limitations](#limitations)
+
+
 ## Usage - Maven plugin
 
 Prerequisite: add the JBoss Releases repository as a plugin repository in your Maven project:
@@ -79,8 +88,11 @@ mvn dependency-updater:report
 mvn dependency-updater:perform-upgrades
 ```
 
-If you want to use specific configuration, place `dependency-upgrade-config.json` file into your root project directory.
-See "Configuration" section for more information about the configuration file options. 
+Reports will be saved in `dependency-upgrades-report.txt` files in `target/` directories of maven modules. If no
+upgradeable dependencies are found, the report file for given module will not be generated.
+
+If you want to define upgrade rules, place `dependency-upgrade-config.json` file into your root project directory.
+See [Configuration](#configuration) section for more information about the configuration file options. 
 
 ## Usage - CLI
 
@@ -91,7 +103,7 @@ java -jar <path/to/alignment-cli.jar> <action> -f <path/to/pom.xml> [-c <path/to
 - alignment-cli-\<version\>.jar file is generated during build in `$SOURCE_DIR/cli/target/`,
 - `<action>` can be "generate-report" or "perform-upgrades".
 
-### Usage Examples
+### CLI Usage Examples
 
 Generate text report with possible dependency upgrades to an output file `report.txt`:
 
@@ -190,7 +202,8 @@ but not "1.3.0.Final" or "1.2.3.Beta1".
 
 ## Limitations
 
-* In a multi-module project, only the single POM file specified in the "-c" parameter is processed. Parent or nested POMs are not. 
-  This behaviour is considered "good enough" for now, as most projects have dependency versions managed in a BOM or a parent POM. 
+* When using CLI tool on a multi-module project, only the single POM file specified in the "-c" parameter is processed.
+  Parent or nested POMs are not. This behaviour is considered "good enough" for now, as most projects have dependency
+  versions managed in a BOM or a parent POM. 
 * Dependencies defined in profiles are not processed.
 * Plugins are not processed.
