@@ -36,6 +36,9 @@ public class VersionUtilsTestCase {
         Assert.assertFalse(VersionUtils.equalMmm("1.0.0", "1.0.1", MICRO));
         Assert.assertFalse(VersionUtils.equalMmm("2.0.1", "1.0.1", MICRO));
         Assert.assertFalse(VersionUtils.equalMmm("1.0", "1.0.1", MICRO));
+
+        Assert.assertTrue(VersionUtils.equalMmm("Dysprosium-SR3", "Dysprosium-SR3", MICRO));
+        Assert.assertTrue(VersionUtils.equalMmm("Dysprosium-SR3", "Dysprosium-RELEASE", MICRO));
     }
 
 }
