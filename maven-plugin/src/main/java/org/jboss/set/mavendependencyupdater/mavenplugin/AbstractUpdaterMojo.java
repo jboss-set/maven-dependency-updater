@@ -61,8 +61,10 @@ public abstract class AbstractUpdaterMojo extends AbstractMojo {
             File executionProjectDirectory = project.getExecutionProject().getModel().getProjectDirectory();
             File configurationFile = new File(executionProjectDirectory, CONFIGURATION_FILE);
             if (configurationFile.exists()) {
+                getLog().info("Using configuration file " + configurationFile.getPath());
                 configuration = new Configuration(configurationFile);
             } else {
+                getLog().info("No configuration file detected.");
                 configuration = new Configuration(null);
             }
         } catch (IOException e) {
