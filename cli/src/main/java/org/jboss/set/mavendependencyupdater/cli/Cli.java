@@ -13,6 +13,7 @@ import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.AvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DefaultAvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
+import org.jboss.set.mavendependencyupdater.core.processingstrategies.HtmlReportProcessingStrategy;
 import org.jboss.set.mavendependencyupdater.core.processingstrategies.ModifyLocallyProcessingStrategy;
 import org.jboss.set.mavendependencyupdater.core.processingstrategies.SeparatePRsProcessingStrategy;
 import org.jboss.set.mavendependencyupdater.core.processingstrategies.TextReportProcessingStrategy;
@@ -33,9 +34,11 @@ public class Cli {
     private static final String PERFORM_UPGRADES = "perform-upgrades";
     private static final String GENERATE_PRS = "generate-prs";
     private static final String GENERATE_REPORT = "generate-report";
+    private static final String GENERATE_HTML_REPORT = "generate-html-report";
     private static final String GENERATE_CONFIG = "generate-config";
     private static final String CHECK_CONFIG = "check-config";
-    private static final String[] COMMANDS = {PERFORM_UPGRADES, GENERATE_PRS, GENERATE_REPORT, GENERATE_CONFIG, CHECK_CONFIG};
+    private static final String[] COMMANDS = {PERFORM_UPGRADES, GENERATE_PRS, GENERATE_REPORT, GENERATE_HTML_REPORT,
+            GENERATE_CONFIG, CHECK_CONFIG};
 
     private static final String PREFIX_DOESNT_MATCH_MSG = "Dependency %s doesn't match prefix '%s'";
 
@@ -135,6 +138,15 @@ public class Cli {
                 strategy = new TextReportProcessingStrategy(configuration, pomFile, cmd.getOptionValue('o'));
             } else {
                 strategy = new TextReportProcessingStrategy(configuration, pomFile, System.out);
+            }
+            success = performAlignment(strategy);
+        } else if (GENERATE_HTML_REPORT.equals(arguments[0])) {
+            configuration = new Configuration(configurationFile);
+            UpgradeProcessingStrategy strategy;
+            if (cmd.hasOption('o')) {
+                strategy = new HtmlReportProcessingStrategy(configuration, pomFile, cmd.getOptionValue('o'));
+            } else {
+                strategy = new HtmlReportProcessingStrategy(configuration, pomFile, System.out);
             }
             success = performAlignment(strategy);
         } else if (GENERATE_CONFIG.equals(arguments[0])) {

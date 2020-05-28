@@ -37,11 +37,12 @@ public class Configuration {
     public static final String NEVER = "NEVER";
     public static final String IGNORE = "IGNORE";
 
-    private Map<String, Map<String, List<Restriction>>> restrictions = new HashMap<>();
-    private List<String> ignoreScopes = new ArrayList<>();
-    private GitHubConfigurationModel gitHub;
-    private GitConfigurationModel git;
-    private Map<String, String> repositories = new LinkedHashMap<>();
+    private final Map<String, Map<String, List<Restriction>>> restrictions = new HashMap<>();
+    private final List<String> ignoreScopes = new ArrayList<>();
+    private final GitHubConfigurationModel gitHub;
+    private final GitConfigurationModel git;
+    private final LoggerModel logger;
+    private final Map<String, String> repositories = new LinkedHashMap<>();
 
     public Configuration(File file) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
@@ -54,6 +55,7 @@ public class Configuration {
 
         this.gitHub = data.getGitHub();
         this.git = data.getGit();
+        this.logger = data.getLogger();
 
         if (data.getRepositories() != null) {
             this.repositories.putAll(data.getRepositories());
@@ -167,6 +169,10 @@ public class Configuration {
         return git;
     }
 
+    public LoggerModel getLogger() {
+        return logger;
+    }
+
     public Map<String, String> getRepositories() {
         return repositories;
     }
@@ -216,6 +222,7 @@ public class Configuration {
         return defaultValue;
     }
 
+    @SuppressWarnings("rawtypes")
     private static String[] readSingleStringOrArray(Object restrictionObject) {
         String[] result;
         if (restrictionObject instanceof String) {

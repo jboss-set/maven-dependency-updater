@@ -46,6 +46,7 @@
         <module>git-manipulator</module>
         <module>core</module>
         <module>maven-plugin</module>
+        <module>logger-client</module>
     </modules>
 
     <dependencyManagement>
@@ -79,6 +80,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>logger-client</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -178,6 +184,13 @@
                 <groupId>org.kohsuke</groupId>
                 <artifactId>github-api</artifactId>
                 <version>1.95</version>
+            </dependency>
+
+            <!-- HTML reports -->
+            <dependency>
+                <groupId>com.j2html</groupId>
+                <artifactId>j2html</artifactId>
+                <version>1.4.0</version>
             </dependency>
 
             <!-- Logging -->

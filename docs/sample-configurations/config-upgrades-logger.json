@@ -1,0 +1,18 @@
+{
+  "logger": {
+    "projectCode": "test",
+    "uri": "http://component-upgrade-logger-jvm-component-alignment.int.open.paas.redhat.com/api"
+  },
+
+  "repositories": {
+    "Central": "https://repo1.maven.org/maven2/"
+  },
+
+  "ignoreScopes": ["test"],
+
+  "rules": {
+    "*:*": {
+      "STREAM": "MICRO"
+    }
+  }
+}

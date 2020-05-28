@@ -1,5 +1,6 @@
 package org.jboss.set.mavendependencyupdater;
 
+import org.apache.commons.lang3.StringUtils;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.eclipse.aether.RepositoryException;
 import org.eclipse.aether.artifact.Artifact;
@@ -9,33 +10,62 @@ import org.eclipse.aether.version.Version;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
+import org.jboss.set.mavendependencyupdater.loggerclient.ComponentUpgradeDTO;
+import org.jboss.set.mavendependencyupdater.loggerclient.LoggerClient;
+import org.jboss.set.mavendependencyupdater.loggerclient.LoggerClientFactory;
+import org.jboss.set.mavendependencyupdater.loggerclient.UpgradeNotFoundException;
 import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
 import org.jboss.set.mavendependencyupdater.rules.TokenizedVersion;
 import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
 import org.jboss.set.mavendependencyupdater.rules.VersionStreamRestriction;
 
+import java.net.URI;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class DependencyEvaluator {
+
+    private static final String PROJECT_CODE = "logger.projectCode";
+    private static final String LOGGER_URI = "logger.uri";
 
     private static final Logger LOG = Logger.getLogger(DependencyEvaluator.class);
 
     private static final VersionStreamRestriction DEFAULT_STREAM_RESTRICTION =
             new VersionStreamRestriction(VersionStream.MICRO);
 
-    private Configuration configuration;
-    private AvailableVersionsResolver availableVersionsResolver;
+    final private Configuration configuration;
+    final private AvailableVersionsResolver availableVersionsResolver;
+    private LoggerClient loggerClient;
+    private String projectCode;
     private boolean configUpToDate;
 
     public DependencyEvaluator(Configuration configuration, AvailableVersionsResolver availableVersionsResolver) {
         this.configuration = configuration;
         this.availableVersionsResolver = availableVersionsResolver;
+
+        String loggerUri = configuration.getLogger().getUri();
+        if (System.getProperties().containsKey(LOGGER_URI)) {
+            loggerUri = System.getProperty(LOGGER_URI);
+        }
+
+        if (StringUtils.isNotBlank(loggerUri)) {
+            loggerClient = LoggerClientFactory.createClient(URI.create(loggerUri));
+
+            projectCode = configuration.getLogger().getProjectCode();
+            if (System.getProperties().containsKey(PROJECT_CODE)) {
+                projectCode = System.getProperty(PROJECT_CODE);
+            }
+            if (StringUtils.isBlank(projectCode)) {
+                LOG.warnf("Project code is not configured, logger service will not be used.");
+            }
+        }
     }
 
     /**
@@ -70,10 +100,13 @@ public class DependencyEvaluator {
 
                 LOG.debugf("Available versions for '%s': %s", dep, versionRangeResult);
                 if (latest.isPresent() && !dep.getVersionString().equals(latest.get().toString())) {
-                    String latestStr = latest.get().toString();
+                    String latestVersion = latest.get().toString();
                     String repoId = versionRangeResult.getRepository(latest.get()).getId();
-                    LOG.infof("Found possible upgrade of '%s' to '%s' in repo '%s'", dep, latestStr, repoId);
-                    versionsToUpgrade.add(new ComponentUpgrade(dep, latestStr, repoId));
+                    LOG.infof("Found possible upgrade of '%s' to '%s' in repo '%s'", dep, latestVersion, repoId);
+
+                    // check when this upgrade was first detected
+                    LocalDateTime firstSeen = findComponentUpgradeDate(dep, latestVersion);
+                    versionsToUpgrade.add(new ComponentUpgrade(dep, latestVersion, repoId, firstSeen));
                 } else {
                     LOG.debugf("  => no change");
                 }
@@ -83,8 +116,10 @@ public class DependencyEvaluator {
         }
 
         if (!configUpToDate) {
-            LOG.warn("Configuration not up to date? Check the warnings above.");
+            LOG.warn("Configuration not up to date. Check the warnings above.");
         }
+
+        sendDetectedUpgradesToExternalService(versionsToUpgrade);
 
         return versionsToUpgrade;
     }
@@ -142,19 +177,59 @@ public class DependencyEvaluator {
         return workingStream.max(Comparator.comparing(v -> TokenizedVersion.parse(v.toString())));
     }
 
+    LocalDateTime findComponentUpgradeDate(ScopedArtifactRef dep, String newVersion) {
+        if (loggerClient != null && StringUtils.isNotBlank(projectCode)) {
+            try {
+                ComponentUpgradeDTO componentUpgrade = loggerClient.getFirst(projectCode, dep.getGroupId(), dep.getArtifactId(), newVersion);
+                if (componentUpgrade != null) {
+                    LOG.infof("Component upgrade to %s:%s:%s already seen at %s", dep.getGroupId(), dep.getArtifactId(), newVersion, componentUpgrade.created);
+                    return componentUpgrade.created;
+                }
+            } catch (UpgradeNotFoundException e) {
+                LOG.infof("Component upgrade to %s:%s:%s was not previously recorded", dep.getGroupId(), dep.getArtifactId(), newVersion);
+            }
+        }
+        return null;
+    }
+
+    void sendDetectedUpgradesToExternalService(List<ComponentUpgrade> componentUpgrades) {
+        if (loggerClient != null && StringUtils.isNotBlank(projectCode)) {
+            LOG.infof("Recording %d component upgrades under project '%s'", componentUpgrades.size(), projectCode);
+            List<ComponentUpgradeDTO> dtos = componentUpgrades.stream()
+                    .map(u -> convertToDTO(projectCode, u))
+                    .collect(Collectors.toList());
+            loggerClient.create(dtos);
+        }
+    }
+
+    static ComponentUpgradeDTO convertToDTO(String projectCode, ComponentUpgrade componentUpgrade) {
+        return new ComponentUpgradeDTO(projectCode,
+                componentUpgrade.getArtifact().getGroupId(),
+                componentUpgrade.getArtifact().getArtifactId(),
+                componentUpgrade.artifact.getVersionString(),
+                componentUpgrade.newVersion,
+                null);
+    }
+
     /**
      * Data bean wrapping component upgrade information.
      */
     public static class ComponentUpgrade {
 
-        private ArtifactRef artifact;
-        private String newVersion;
-        private String repository;
+        final private ArtifactRef artifact;
+        final private String newVersion;
+        final private String repository;
+        final private LocalDateTime firstSeen;
 
-        public ComponentUpgrade(ArtifactRef artifact, String newVersion, String repository) {
+        public ComponentUpgrade(ArtifactRef artifact, String newVersion, String repository, LocalDateTime firstSeen) {
             this.artifact = artifact;
             this.newVersion = newVersion;
             this.repository = repository;
+            this.firstSeen = firstSeen;
+        }
+
+        public ComponentUpgrade(ArtifactRef artifact, String newVersion, String repository) {
+            this(artifact, newVersion, repository, null);
         }
 
         public ArtifactRef getArtifact() {
@@ -167,6 +242,10 @@ public class DependencyEvaluator {
 
         public String getRepository() {
             return repository;
+        }
+
+        public LocalDateTime getFirstSeen() {
+            return firstSeen;
         }
 
         @Override

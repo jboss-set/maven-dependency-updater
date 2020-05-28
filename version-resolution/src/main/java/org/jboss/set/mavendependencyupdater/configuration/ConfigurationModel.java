@@ -30,6 +30,9 @@ public class ConfigurationModel {
     @JsonProperty
     private GitConfigurationModel git = new GitConfigurationModel();
 
+    @JsonProperty
+    private LoggerModel logger = new LoggerModel();
+
     public Map<String, String> getRepositories() {
         return repositories;
     }
@@ -48,5 +51,9 @@ public class ConfigurationModel {
 
     public GitConfigurationModel getGit() {
         return git;
+    }
+
+    public LoggerModel getLogger() {
+        return logger;
     }
 }

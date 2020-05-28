@@ -1,6 +1,7 @@
 {
   "repositories": {
-    "Central": "https://repo1.maven.org/maven2/"
+    "Central": "https://repo1.maven.org/maven2/",
+    "MRRC": "https://maven.repository.redhat.com/ga/"
   },
 
   "ignoreScopes": ["test"],
