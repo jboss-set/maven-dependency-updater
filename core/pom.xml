@@ -30,5 +30,10 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>git-manipulator</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>com.j2html</groupId>
+            <artifactId>j2html</artifactId>
+        </dependency>
     </dependencies>
 </project>

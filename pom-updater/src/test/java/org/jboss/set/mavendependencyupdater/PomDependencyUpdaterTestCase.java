@@ -138,6 +138,6 @@ public class PomDependencyUpdaterTestCase {
     }
 
     private static DependencyEvaluator.ComponentUpgrade newUpgrade(ArtifactRef artifact, String newVersion) {
-        return new DependencyEvaluator.ComponentUpgrade(artifact, newVersion, null);
+        return new DependencyEvaluator.ComponentUpgrade(artifact, newVersion, null, null);
     }
 }

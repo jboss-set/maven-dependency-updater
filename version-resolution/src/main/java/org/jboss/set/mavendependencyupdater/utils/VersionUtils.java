@@ -1,6 +1,7 @@
 package org.jboss.set.mavendependencyupdater.utils;
 
 import org.commonjava.maven.ext.core.impl.Version;
+import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.VersionStream;
 
 public class VersionUtils {
@@ -26,11 +27,17 @@ public class VersionUtils {
                 return true;
             }
 
-            int x1 = mmm1Split.length > i ? Integer.parseInt(mmm1Split[i]) : 0;
-            int x2 = mmm2Split.length > i ? Integer.parseInt(mmm2Split[i]) : 0;
+            try {
+                int x1 = mmm1Split.length > i ? Integer.parseInt(mmm1Split[i]) : 0;
+                int x2 = mmm2Split.length > i ? Integer.parseInt(mmm2Split[i]) : 0;
 
-            if (x1 != x2) {
-                return false;
+                if (x1 != x2) {
+                    return false;
+                }
+            } catch (NumberFormatException e) {
+                if (!mmm1Split[i].equals(mmm2Split[i])) {
+                    return false;
+                }
             }
         }
         return true;
