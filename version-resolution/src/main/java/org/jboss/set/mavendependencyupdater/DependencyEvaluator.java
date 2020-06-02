@@ -1,6 +1,5 @@
 package org.jboss.set.mavendependencyupdater;
 
-import org.apache.commons.lang3.StringUtils;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.eclipse.aether.RepositoryException;
 import org.eclipse.aether.artifact.Artifact;
@@ -32,9 +31,6 @@ import java.util.stream.Stream;
 
 public class DependencyEvaluator {
 
-    private static final String PROJECT_CODE = "logger.projectCode";
-    private static final String LOGGER_URI = "logger.uri";
-
     private static final Logger LOG = Logger.getLogger(DependencyEvaluator.class);
 
     private static final VersionStreamRestriction DEFAULT_STREAM_RESTRICTION =
@@ -50,21 +46,13 @@ public class DependencyEvaluator {
         this.configuration = configuration;
         this.availableVersionsResolver = availableVersionsResolver;
 
-        String loggerUri = configuration.getLogger().getUri();
-        if (System.getProperties().containsKey(LOGGER_URI)) {
-            loggerUri = System.getProperty(LOGGER_URI);
-        }
-
-        if (StringUtils.isNotBlank(loggerUri)) {
-            loggerClient = LoggerClientFactory.createClient(URI.create(loggerUri));
-
+        if (configuration.getLogger().isActive()) {
+            loggerClient = LoggerClientFactory.createClient(URI.create(configuration.getLogger().getUri()));
             projectCode = configuration.getLogger().getProjectCode();
-            if (System.getProperties().containsKey(PROJECT_CODE)) {
-                projectCode = System.getProperty(PROJECT_CODE);
-            }
-            if (StringUtils.isBlank(projectCode)) {
-                LOG.warnf("Project code is not configured, logger service will not be used.");
-            }
+            LOG.infof("Logger service URI is %s", configuration.getLogger().getUri());
+            LOG.infof("Logger project code is %s", configuration.getLogger().getProjectCode());
+        } else {
+            LOG.infof("Logger service not configured.");
         }
     }
 
@@ -178,7 +166,7 @@ public class DependencyEvaluator {
     }
 
     LocalDateTime findComponentUpgradeDate(ScopedArtifactRef dep, String newVersion) {
-        if (loggerClient != null && StringUtils.isNotBlank(projectCode)) {
+        if (loggerClient != null) {
             try {
                 ComponentUpgradeDTO componentUpgrade = loggerClient.getFirst(projectCode, dep.getGroupId(), dep.getArtifactId(), newVersion);
                 if (componentUpgrade != null) {
@@ -193,7 +181,7 @@ public class DependencyEvaluator {
     }
 
     void sendDetectedUpgradesToExternalService(List<ComponentUpgrade> componentUpgrades) {
-        if (loggerClient != null && StringUtils.isNotBlank(projectCode)) {
+        if (loggerClient != null) {
             LOG.infof("Recording %d component upgrades under project '%s'", componentUpgrades.size(), projectCode);
             List<ComponentUpgradeDTO> dtos = componentUpgrades.stream()
                     .map(u -> convertToDTO(projectCode, u))
