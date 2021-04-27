@@ -27,6 +27,6 @@ public interface LoggerClient {
 
     @POST
     @Path("/component-upgrades/")
-    Response create(List<ComponentUpgradeDTO> componentUpgrades);
+    void create(List<ComponentUpgradeDTO> componentUpgrades);
 
 }

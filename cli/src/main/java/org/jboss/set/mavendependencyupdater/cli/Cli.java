@@ -21,9 +21,12 @@ import org.jboss.set.mavendependencyupdater.core.processingstrategies.UpgradePro
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.jboss.set.mavendependencyupdater.configuration.ConfigurationGenerator;
+import org.jboss.set.mavendependencyupdater.loggerclient.LoggerClient;
+import org.jboss.set.mavendependencyupdater.loggerclient.LoggerClientFactory;
 import org.jboss.set.mavendependencyupdater.projectparser.PmeDependencyCollector;
 
 import java.io.File;
+import java.net.URI;
 import java.util.Collection;
 import java.util.List;
 
@@ -196,8 +199,17 @@ public class Cli {
         assert configuration != null;
         assert rootProjectDependencies != null;
 
+        LoggerClient loggerClient = null;
+        if (configuration.getLogger().isSet()) {
+            LOG.infof("Logger service URI is %s", configuration.getLogger().getUri());
+            LOG.infof("Logger project code is %s", configuration.getLogger().getProjectCode());
+            loggerClient = LoggerClientFactory.createClient(URI.create(configuration.getLogger().getUri()));
+        } else {
+            LOG.infof("Logger service not configured.");
+        }
+
         AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver(configuration);
-        DependencyEvaluator evaluator = new DependencyEvaluator(configuration, availableVersionsResolver);
+        DependencyEvaluator evaluator = new DependencyEvaluator(configuration, availableVersionsResolver, loggerClient);
         List<DependencyEvaluator.ComponentUpgrade> componentUpgrades = evaluator.getVersionsToUpgrade(rootProjectDependencies);
         return strategy.process(componentUpgrades);
     }

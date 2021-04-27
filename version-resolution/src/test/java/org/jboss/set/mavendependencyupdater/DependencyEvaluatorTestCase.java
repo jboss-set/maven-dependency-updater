@@ -1,11 +1,14 @@
 package org.jboss.set.mavendependencyupdater;
 
+import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
 import org.eclipse.aether.util.version.GenericVersionScheme;
 import org.eclipse.aether.version.InvalidVersionSpecificationException;
 import org.eclipse.aether.version.Version;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.common.ident.SimpleScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
+import org.jboss.set.mavendependencyupdater.loggerclient.ComponentUpgradeDTO;
+import org.jboss.set.mavendependencyupdater.loggerclient.LoggerClient;
 import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.QualifierRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
@@ -16,6 +19,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,12 +42,14 @@ public class DependencyEvaluatorTestCase {
     public TemporaryFolder tempDir = new TemporaryFolder();
 
     private DependencyEvaluator evaluator;
+    private LoggerClient loggerClientMock;
 
     @Before
     public void setUp() throws URISyntaxException, IOException {
         URL configResource = getClass().getClassLoader().getResource("configuration.json");
         Assert.assertNotNull(configResource);
         Configuration configuration = new Configuration(new File(configResource.toURI()));
+        loggerClientMock = Mockito.mock(LoggerClient.class);
 
         AvailableVersionsResolverMock resolver = new AvailableVersionsResolverMock();
         resolver.setResult("org.wildfly:wildfly-messaging",
@@ -55,7 +62,7 @@ public class DependencyEvaluatorTestCase {
                 Arrays.asList("3.2.3.redhat-00002", "3.2.4.fuse-740019-redhat-00003", "3.3.0")); // fuse should be ignored
         resolver.setResult("junit:junit", Arrays.asList("4.8.1", "4.12"));
 
-        evaluator = new DependencyEvaluator(configuration, resolver);
+        evaluator = new DependencyEvaluator(configuration, resolver, loggerClientMock);
     }
 
     @Test
@@ -96,12 +103,15 @@ public class DependencyEvaluatorTestCase {
         List<Restriction> restrictionsQualifier = Collections.singletonList(new VersionStreamRestriction(QUALIFIER));
 
         Optional<Version> latest = evaluator.findLatest(newDependency("1.1.1"), restrictionsMicro, availableVersions);
+        Assert.assertTrue(latest.isPresent());
         Assert.assertEquals("1.1.4.redhat-00002", latest.get().toString());
 
         latest = evaluator.findLatest(newDependency("1.1.1"), restrictionsQualifier, availableVersions);
+        Assert.assertTrue(latest.isPresent());
         Assert.assertEquals("1.1.1.SP02", latest.get().toString());
 
         latest = evaluator.findLatest(newDependency("1.1.0"), restrictionsQualifier, availableVersions);
+        Assert.assertTrue(latest.isPresent());
         Assert.assertEquals("1.1.0", latest.get().toString());
 
         latest = evaluator.findLatest(newDependency("1.0.0"), restrictionsQualifier, availableVersions);
@@ -121,7 +131,6 @@ public class DependencyEvaluatorTestCase {
 
         List<Version> availableVersions = new ArrayList<>();
         Optional<Version> latest;
-        VersionStream versionStream = MICRO; // will be ignored, because VersionPrefixRestriction has precedence
 
         SimpleScopedArtifactRef dependency =
                 new SimpleScopedArtifactRef("test", "test", "1.Final", "jar", null, "compile");
@@ -129,26 +138,32 @@ public class DependencyEvaluatorTestCase {
 
         availableVersions.add(scheme.parseVersion("1.Final"));
         latest = evaluator.findLatest(dependency, restrictions, availableVersions);
+        Assert.assertTrue(latest.isPresent());
         Assert.assertEquals("1.Final", latest.get().toString());
 
         availableVersions.add(scheme.parseVersion("10.Final"));
         latest = evaluator.findLatest(dependency, restrictions, availableVersions);
+        Assert.assertTrue(latest.isPresent());
         Assert.assertEquals("1.Final", latest.get().toString());
 
         availableVersions.add(scheme.parseVersion("1.1.Final"));
         latest = evaluator.findLatest(dependency, restrictions, availableVersions);
+        Assert.assertTrue(latest.isPresent());
         Assert.assertEquals("1.1.Final", latest.get().toString());
 
         availableVersions.add(scheme.parseVersion("1.1.Final-redhat-00001"));
         latest = evaluator.findLatest(dependency, restrictions, availableVersions);
+        Assert.assertTrue(latest.isPresent());
         Assert.assertEquals("1.1.Final-redhat-00001", latest.get().toString());
 
         availableVersions.add(scheme.parseVersion("1.2"));
         latest = evaluator.findLatest(dependency, restrictions, availableVersions);
+        Assert.assertTrue(latest.isPresent());
         Assert.assertEquals("1.1.Final-redhat-00001", latest.get().toString());
 
         availableVersions.add(scheme.parseVersion("1.2.Final"));
         latest = evaluator.findLatest(dependency, restrictions, availableVersions);
+        Assert.assertTrue(latest.isPresent());
         Assert.assertEquals("1.2.Final", latest.get().toString());
     }
 
@@ -205,7 +220,43 @@ public class DependencyEvaluatorTestCase {
         Assert.assertEquals("1.3.16.SP1-redhat-6", latest.get().toString());
     }
 
+    @Test
+    public void testSendDetectedUpgradesToExternalService() {
+        //noinspection unchecked
+        ArgumentCaptor<List<ComponentUpgradeDTO>> listCaptor = ArgumentCaptor.forClass(List.class);
+        evaluator.sendDetectedUpgradesToExternalService(createComponentUpgradeInstances(29));
+        Mockito.verify(loggerClientMock, Mockito.times(1)).create(listCaptor.capture());
+        Assert.assertEquals(29, listCaptor.getValue().size());
+
+        //noinspection unchecked
+        listCaptor = ArgumentCaptor.forClass(List.class);
+        Mockito.reset(loggerClientMock);
+        evaluator.sendDetectedUpgradesToExternalService(createComponentUpgradeInstances(30));
+        Mockito.verify(loggerClientMock, Mockito.times(1)).create(listCaptor.capture());
+        Assert.assertEquals(30, listCaptor.getValue().size());
+
+        //noinspection unchecked
+        listCaptor = ArgumentCaptor.forClass(List.class);
+        Mockito.reset(loggerClientMock);
+        evaluator.sendDetectedUpgradesToExternalService(createComponentUpgradeInstances(31));
+        Mockito.verify(loggerClientMock, Mockito.times(2)).create(listCaptor.capture());
+        List<List<ComponentUpgradeDTO>> sublists = listCaptor.getAllValues();
+        Assert.assertEquals(30, sublists.get(0).size());
+        Assert.assertEquals("29", sublists.get(0).get(29).newVersion);
+        Assert.assertEquals(1, sublists.get(1).size());
+        Assert.assertEquals("30", sublists.get(1).get(0).newVersion);
+    }
+
     private ScopedArtifactRef newDependency(String version) {
         return new SimpleScopedArtifactRef("test", "test", version, "jar", null, "compile");
+    }
+
+    private List<DependencyEvaluator.ComponentUpgrade> createComponentUpgradeInstances(int count) {
+        ArrayList<DependencyEvaluator.ComponentUpgrade> list = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            SimpleArtifactRef ref = new SimpleArtifactRef("group", "artifact", "1", null, "compile");
+            list.add(new DependencyEvaluator.ComponentUpgrade(ref, String.valueOf(i), "repo"));
+        }
+        return list;
     }
 }

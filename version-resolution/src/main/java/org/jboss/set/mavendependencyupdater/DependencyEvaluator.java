@@ -1,5 +1,7 @@
 package org.jboss.set.mavendependencyupdater;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.eclipse.aether.RepositoryException;
 import org.eclipse.aether.artifact.Artifact;
@@ -11,7 +13,6 @@ import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.jboss.set.mavendependencyupdater.loggerclient.ComponentUpgradeDTO;
 import org.jboss.set.mavendependencyupdater.loggerclient.LoggerClient;
-import org.jboss.set.mavendependencyupdater.loggerclient.LoggerClientFactory;
 import org.jboss.set.mavendependencyupdater.loggerclient.UpgradeNotFoundException;
 import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
@@ -19,7 +20,6 @@ import org.jboss.set.mavendependencyupdater.rules.TokenizedVersion;
 import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
 import org.jboss.set.mavendependencyupdater.rules.VersionStreamRestriction;
 
-import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,24 +36,16 @@ public class DependencyEvaluator {
     private static final VersionStreamRestriction DEFAULT_STREAM_RESTRICTION =
             new VersionStreamRestriction(VersionStream.MICRO);
 
-    final private Configuration configuration;
-    final private AvailableVersionsResolver availableVersionsResolver;
-    private LoggerClient loggerClient;
-    private String projectCode;
+    private final Configuration configuration;
+    private final AvailableVersionsResolver availableVersionsResolver;
+    private final LoggerClient loggerClient;
     private boolean configUpToDate;
 
-    public DependencyEvaluator(Configuration configuration, AvailableVersionsResolver availableVersionsResolver) {
+    public DependencyEvaluator(Configuration configuration, AvailableVersionsResolver availableVersionsResolver,
+                               LoggerClient loggerClient) {
         this.configuration = configuration;
         this.availableVersionsResolver = availableVersionsResolver;
-
-        if (configuration.getLogger().isActive()) {
-            loggerClient = LoggerClientFactory.createClient(URI.create(configuration.getLogger().getUri()));
-            projectCode = configuration.getLogger().getProjectCode();
-            LOG.infof("Logger service URI is %s", configuration.getLogger().getUri());
-            LOG.infof("Logger project code is %s", configuration.getLogger().getProjectCode());
-        } else {
-            LOG.infof("Logger service not configured.");
-        }
+        this.loggerClient = loggerClient;
     }
 
     /**
@@ -168,7 +160,7 @@ public class DependencyEvaluator {
     LocalDateTime findComponentUpgradeDate(ScopedArtifactRef dep, String newVersion) {
         if (loggerClient != null) {
             try {
-                ComponentUpgradeDTO componentUpgrade = loggerClient.getFirst(projectCode, dep.getGroupId(), dep.getArtifactId(), newVersion);
+                ComponentUpgradeDTO componentUpgrade = loggerClient.getFirst(configuration.getLogger().getProjectCode(), dep.getGroupId(), dep.getArtifactId(), newVersion);
                 if (componentUpgrade != null) {
                     LOG.infof("Component upgrade to %s:%s:%s already seen at %s", dep.getGroupId(), dep.getArtifactId(), newVersion, componentUpgrade.created);
                     return componentUpgrade.created;
@@ -181,13 +173,38 @@ public class DependencyEvaluator {
     }
 
     void sendDetectedUpgradesToExternalService(List<ComponentUpgrade> componentUpgrades) {
-        if (loggerClient != null) {
-            LOG.infof("Recording %d component upgrades under project '%s'", componentUpgrades.size(), projectCode);
-            List<ComponentUpgradeDTO> dtos = componentUpgrades.stream()
-                    .map(u -> convertToDTO(projectCode, u))
-                    .collect(Collectors.toList());
-            loggerClient.create(dtos);
+        if (loggerClient == null) {
+            LOG.info("Logger not configured. Discovered component upgrades will not be recorded.");
+            return;
         }
+
+        LOG.infof("Recording %d component upgrades under project '%s'", componentUpgrades.size(), configuration.getLogger().getProjectCode());
+
+        // send list of upgrades to the logger in batches, to prevent a POST request getting too large
+        final int batchSize = 30;
+        int fromIndex = 0;
+        do {
+            final int toIndex = Math.min(componentUpgrades.size(), fromIndex + batchSize);
+
+            final List<ComponentUpgradeDTO> dtos = componentUpgrades.subList(fromIndex, toIndex).stream()
+                    .map(u -> convertToDTO(configuration.getLogger().getProjectCode(), u))
+                    .collect(Collectors.toList());
+
+            if (LOG.isEnabled(Logger.Level.DEBUG)) {
+                try {
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    String json = objectMapper.writeValueAsString(dtos);
+                    LOG.debugf("Sending detected upgrades to %s (json length: %d):\n%s",
+                            configuration.getLogger().getUri(), json.length(), json);
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            loggerClient.create(dtos);
+
+            fromIndex += batchSize;
+        } while (fromIndex < componentUpgrades.size());
     }
 
     static ComponentUpgradeDTO convertToDTO(String projectCode, ComponentUpgrade componentUpgrade) {

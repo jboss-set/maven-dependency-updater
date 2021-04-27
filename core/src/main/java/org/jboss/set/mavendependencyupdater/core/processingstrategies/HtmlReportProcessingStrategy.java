@@ -127,14 +127,14 @@ public class HtmlReportProcessingStrategy extends TextReportProcessingStrategy {
         headers.add(th("GAV").withStyle(TH_TD_STYLES));
         headers.add(th("New Version").withStyle(TH_TD_STYLES));
         headers.add(th("Repository").withStyle(TH_TD_STYLES));
-        if (configuration.getLogger().isActive()) {
+        if (configuration.getLogger().isSet()) {
             headers.add(th("Since").withStyle(TH_TD_STYLES));
         }
         return headers.toArray(new DomContent[]{});
     }
 
     private DomContent[] tableRowData(ComponentUpgrade upgrade) {
-        boolean isNew = upgrade.getFirstSeen() == null && configuration.getLogger().isActive();
+        boolean isNew = upgrade.getFirstSeen() == null && configuration.getLogger().isSet();
 
         ArrayList<DomContent> cells = new ArrayList<>();
         cells.add(td(upgrade.getArtifact().getGroupId()
@@ -146,7 +146,7 @@ public class HtmlReportProcessingStrategy extends TextReportProcessingStrategy {
         cells.add(td(span(upgrade.getRepository())
                         .withStyle(REPO_LABEL_STYLES + repositoryColor(upgrade.getRepository())))
                         .withStyle(TH_TD_STYLES + (isNew ? BG_NEW : "")));
-        if (configuration.getLogger().isActive()) {
+        if (configuration.getLogger().isSet()) {
             cells.add(td(upgrade.getFirstSeen() == null ? "new" : upgrade.getFirstSeen().format(DATE_FORMATTER))
                     .withStyle(TH_TD_STYLES + (isNew ? BG_NEW : "")));
         }

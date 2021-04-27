@@ -54,7 +54,7 @@ public class DefaultAvailableVersionsResolver implements AvailableVersionsResolv
 
         if (LOG.isDebugEnabled()) {
             for (Exception e: rangeResult.getExceptions()) {
-                LOG.debugf(e, "Version resolution exception: %s", e.getMessage());
+                LOG.debugf("Version resolution exception: %s", e.getMessage());
             }
         }
 

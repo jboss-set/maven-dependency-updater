@@ -32,9 +32,9 @@ public class LoggerModel {
     }
 
     /**
-     * Is logging functionality active?
+     * Is logging functionality configured?
      */
-    public boolean isActive() {
+    public boolean isSet() {
         return StringUtils.isNoneBlank(getUri(), getProjectCode());
     }
 }
