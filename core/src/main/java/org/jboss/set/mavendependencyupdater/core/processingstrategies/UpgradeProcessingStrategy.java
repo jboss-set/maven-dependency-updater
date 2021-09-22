@@ -17,5 +17,5 @@ public interface UpgradeProcessingStrategy {
      * @param upgrades component upgrades
      * @return processed successfully?
      */
-    boolean process(List<DependencyEvaluator.ComponentUpgrade> upgrades);
+    boolean process(List<DependencyEvaluator.ComponentUpgrade> upgrades) throws Exception;
 }

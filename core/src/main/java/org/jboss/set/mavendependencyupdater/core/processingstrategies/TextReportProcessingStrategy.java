@@ -34,7 +34,7 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
     protected PrintStream outputStream;
     protected File outputFile;
 
-    TextReportProcessingStrategy(Configuration configuration, File pomFile) {
+    public TextReportProcessingStrategy(Configuration configuration, File pomFile) {
         this.configuration = configuration;
         this.pomFile = pomFile;
     }
@@ -64,7 +64,7 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
     }
 
     @Override
-    public boolean process(List<ComponentUpgrade> upgrades) {
+    public boolean process(List<ComponentUpgrade> upgrades) throws Exception {
         try {
             if (upgrades.size() == 0) {
                 LOG.info("No components to upgrade.");

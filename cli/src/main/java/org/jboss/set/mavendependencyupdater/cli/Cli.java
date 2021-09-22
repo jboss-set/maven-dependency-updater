@@ -1,5 +1,6 @@
 package org.jboss.set.mavendependencyupdater.cli;
 
+import com.google.common.base.Strings;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -13,14 +14,15 @@ import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.AvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DefaultAvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
+import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
+import org.jboss.set.mavendependencyupdater.configuration.Configuration;
+import org.jboss.set.mavendependencyupdater.configuration.ConfigurationGenerator;
+import org.jboss.set.mavendependencyupdater.core.processingstrategies.EmailReportProcessingStrategy;
 import org.jboss.set.mavendependencyupdater.core.processingstrategies.HtmlReportProcessingStrategy;
 import org.jboss.set.mavendependencyupdater.core.processingstrategies.ModifyLocallyProcessingStrategy;
 import org.jboss.set.mavendependencyupdater.core.processingstrategies.SeparatePRsProcessingStrategy;
 import org.jboss.set.mavendependencyupdater.core.processingstrategies.TextReportProcessingStrategy;
 import org.jboss.set.mavendependencyupdater.core.processingstrategies.UpgradeProcessingStrategy;
-import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
-import org.jboss.set.mavendependencyupdater.configuration.Configuration;
-import org.jboss.set.mavendependencyupdater.configuration.ConfigurationGenerator;
 import org.jboss.set.mavendependencyupdater.loggerclient.LoggerClient;
 import org.jboss.set.mavendependencyupdater.loggerclient.LoggerClientFactory;
 import org.jboss.set.mavendependencyupdater.projectparser.PmeDependencyCollector;
@@ -38,15 +40,16 @@ public class Cli {
     private static final String GENERATE_PRS = "generate-prs";
     private static final String GENERATE_REPORT = "generate-report";
     private static final String GENERATE_HTML_REPORT = "generate-html-report";
+    private static final String SEND_HTML_REPORT = "send-html-report";
     private static final String GENERATE_CONFIG = "generate-config";
     private static final String CHECK_CONFIG = "check-config";
     private static final String[] COMMANDS = {PERFORM_UPGRADES, GENERATE_PRS, GENERATE_REPORT, GENERATE_HTML_REPORT,
-            GENERATE_CONFIG, CHECK_CONFIG};
+            GENERATE_CONFIG, CHECK_CONFIG, SEND_HTML_REPORT};
 
     private static final String PREFIX_DOESNT_MATCH_MSG = "Dependency %s doesn't match prefix '%s'";
 
-    private Options options;
-    private CommandLineParser parser = new DefaultParser();
+    final private Options options;
+    final private CommandLineParser parser = new DefaultParser();
     private Configuration configuration;
     private Collection<ScopedArtifactRef> rootProjectDependencies;
 
@@ -80,6 +83,31 @@ public class Cli {
                 .hasArgs()
                 .numberOfArgs(1)
                 .desc("output file for report generation")
+                .build());
+        options.addOption(Option.builder().longOpt("email-from")
+                .desc("From address, when sending report as an email")
+                .hasArgs()
+                .numberOfArgs(1)
+                .build());
+        options.addOption(Option.builder().longOpt("email-to")
+                .desc("Address to send the email report to")
+                .hasArgs()
+                .numberOfArgs(1)
+                .build());
+        options.addOption(Option.builder().longOpt("email-smtp-host")
+                .desc("SMTP server host")
+                .hasArgs()
+                .numberOfArgs(1)
+                .build());
+        options.addOption(Option.builder().longOpt("email-smtp-port")
+                .desc("SMTP server port")
+                .hasArgs()
+                .numberOfArgs(1)
+                .build());
+        options.addOption(Option.builder().longOpt("email-subject")
+                .desc("Report email subject")
+                .hasArgs()
+                .numberOfArgs(1)
                 .build());
     }
 
@@ -152,6 +180,43 @@ public class Cli {
                 strategy = new HtmlReportProcessingStrategy(configuration, pomFile, System.out);
             }
             success = performAlignment(strategy);
+        } else if (SEND_HTML_REPORT.equals(arguments[0])) {
+            configuration = new Configuration(configurationFile);
+
+            String host = cmd.getOptionValue("email-smtp-host");
+            if (Strings.isNullOrEmpty(host)) {
+                System.err.println("Missing option email-smtp-host.");
+                printHelp();
+                return 10;
+            }
+            String port = cmd.getOptionValue("email-smtp-port");
+            if (Strings.isNullOrEmpty(port)) {
+                System.err.println("Missing option email-smtp-port.");
+                printHelp();
+                return 10;
+            }
+            String from = cmd.getOptionValue("email-from");
+            if (Strings.isNullOrEmpty(from)) {
+                System.err.println("Missing option email-from.");
+                printHelp();
+                return 10;
+            }
+            String to = cmd.getOptionValue("email-to");
+            if (Strings.isNullOrEmpty(to)) {
+                System.err.println("Missing option email-to.");
+                printHelp();
+                return 10;
+            }
+            String subject = cmd.getOptionValue("email-subject");
+            if (Strings.isNullOrEmpty(subject)) {
+                System.err.println("Missing option email-subject.");
+                printHelp();
+                return 10;
+            }
+
+            UpgradeProcessingStrategy strategy = new EmailReportProcessingStrategy(configuration, pomFile,
+                    host, port, from, to, subject);
+            success = performAlignment(strategy);
         } else if (GENERATE_CONFIG.equals(arguments[0])) {
             new ConfigurationGenerator().generateDefautlConfig(configurationFile, rootProjectDependencies);
             success = true;
@@ -160,7 +225,7 @@ public class Cli {
             Collection<Pair<ScopedArtifactRef, String>> outOfDate =
                     configuration.findOutOfDateRestrictions(rootProjectDependencies);
             outOfDate.forEach(p ->
-                    System.err.println(String.format(PREFIX_DOESNT_MATCH_MSG, p.getLeft(), p.getRight()))
+                    System.err.printf((PREFIX_DOESNT_MATCH_MSG) + "%n", p.getLeft(), p.getRight())
             );
             success = true;
         } else {
@@ -178,15 +243,17 @@ public class Cli {
 
     private void printHelp() {
         String header = "\nCommands:\n" +
-                "  generate-report    Generates text report\n" +
-                "  perform-upgrades   Locally perform dependencies in given POM file\n" +
-                "  generate-prs       Aligns dependencies in given POM file and generates\n" +
-                "                     separate pull requests for each upgrade\n" +
-                "  generate-config    Generates somewhat sane base for dependency alignment\n" +
-                "                     configuration for given project\n" +
-                "  check-config       Checks if configuration is up-to-date\n" +
-                "                     (project dependencies match configured version\n" +
-                "                     prefixes)\n" +
+                "  generate-report      Generates a text report\n" +
+                "  generate-html-report Generates an HTML report\n" +
+                "  send-html-report     Send an HTML report via e-mail\n" +
+                "  perform-upgrades     Locally perform dependencies in given POM file\n" +
+                "  generate-prs         Aligns dependencies in given POM file and generates\n" +
+                "                       separate pull requests for each upgrade\n" +
+                "  generate-config      Generates somewhat sane base for dependency alignment\n" +
+                "                       configuration for given project\n" +
+                "  check-config         Checks if configuration is up-to-date\n" +
+                "                       (project dependencies match configured version\n" +
+                "                       prefixes)\n" +
                 "\n" +
                 "Parameters:\n";
         //      |<--- Line height of 74 chars                                          --->|
@@ -211,7 +278,12 @@ public class Cli {
         AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver(configuration);
         DependencyEvaluator evaluator = new DependencyEvaluator(configuration, availableVersionsResolver, loggerClient);
         List<DependencyEvaluator.ComponentUpgrade> componentUpgrades = evaluator.getVersionsToUpgrade(rootProjectDependencies);
-        return strategy.process(componentUpgrades);
+        try {
+            return strategy.process(componentUpgrades);
+        } catch (Exception e) {
+            LOG.error("Error when processing component upgrades", e);
+            return false;
+        }
     }
 
 }

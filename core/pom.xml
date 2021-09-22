@@ -35,5 +35,10 @@
             <groupId>com.j2html</groupId>
             <artifactId>j2html</artifactId>
         </dependency>
+        <dependency>
+            <groupId>javax.mail</groupId>
+            <artifactId>mail</artifactId>
+            <version>1.5.0-b01</version>
+        </dependency>
     </dependencies>
 </project>

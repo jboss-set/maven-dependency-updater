@@ -23,6 +23,10 @@ public class PerformUpgradeMojo extends AbstractUpdaterMojo {
         getLog().info("Upgrading dependencies in project " + project.getName());
 
         UpgradeProcessingStrategy strategy = new ModifyLocallyProcessingStrategy(pomFile);
-        strategy.process(componentUpgrades);
+        try {
+            strategy.process(componentUpgrades);
+        } catch (Exception e) {
+            throw new MojoExecutionException("Error when processing dependencies", e);
+        }
     }
 }

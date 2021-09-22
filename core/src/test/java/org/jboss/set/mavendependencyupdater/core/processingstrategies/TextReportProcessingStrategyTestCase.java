@@ -42,7 +42,7 @@ public class TextReportProcessingStrategyTestCase {
     }
 
     @Test
-    public void test() {
+    public void test() throws Exception {
         ArrayList<DependencyEvaluator.ComponentUpgrade> upgrades = new ArrayList<>();
         upgrades.add(new DependencyEvaluator.ComponentUpgrade(SimpleArtifactRef.parse(
                 "org.jboss.logging:jboss-logging:3.4.0.Final"), "3.4.1.Final", "MRRC"));

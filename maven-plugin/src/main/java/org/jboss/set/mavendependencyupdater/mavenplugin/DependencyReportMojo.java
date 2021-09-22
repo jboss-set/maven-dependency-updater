@@ -25,7 +25,11 @@ public class DependencyReportMojo extends AbstractUpdaterMojo {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(baos);
         TextReportProcessingStrategy strategy = new TextReportProcessingStrategy(configuration, pomFile, ps);
-        strategy.process(componentUpgrades);
+        try {
+            strategy.process(componentUpgrades);
+        } catch (Exception e) {
+            throw new MojoExecutionException("Error when processing dependencies", e);
+        }
 
         File targetDirectory = new File(project.getBuild().getDirectory());
         if (!targetDirectory.exists()) {

@@ -62,6 +62,11 @@ public class HtmlReportProcessingStrategy extends TextReportProcessingStrategy {
 
     private List<String> repositoryKeys;
 
+    public HtmlReportProcessingStrategy(Configuration configuration, File pomFile) {
+        super(configuration, pomFile);
+        initRepositoryKeys();
+    }
+
     public HtmlReportProcessingStrategy(Configuration configuration, File pomFile, PrintStream printStream) {
         super(configuration, pomFile, printStream);
         initRepositoryKeys();
@@ -73,7 +78,7 @@ public class HtmlReportProcessingStrategy extends TextReportProcessingStrategy {
     }
 
     @Override
-    public boolean process(List<ComponentUpgrade> upgrades) {
+    public boolean process(List<ComponentUpgrade> upgrades) throws Exception {
         try {
             if (upgrades.size() == 0) {
                 LOG.info("No components to upgrade.");
