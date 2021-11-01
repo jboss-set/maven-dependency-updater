@@ -41,6 +41,11 @@ public class EmailReportProcessingStrategy extends HtmlReportProcessingStrategy 
     public boolean process(List<DependencyEvaluator.ComponentUpgrade> upgrades) throws Exception {
         super.process(upgrades);
 
+        if (upgrades.size() == 0) {
+            // no upgrades detected, no email to send
+            return true;
+        }
+
         Properties prop = new Properties();
         prop.put("mail.smtp.auth", false);
         //prop.put("mail.smtp.starttls.enable", "true");
