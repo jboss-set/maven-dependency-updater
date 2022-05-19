@@ -27,8 +27,8 @@ public class EmailReportProcessingStrategy extends HtmlReportProcessingStrategy 
     final private String subject;
 
     public EmailReportProcessingStrategy(Configuration configuration, File pomFile,
-            String smtpHost, String smtpPort, String fromAddress, String toAddress, String subject) {
-        super(configuration, pomFile);
+            String smtpHost, String smtpPort, String fromAddress, String toAddress, String subject, String outputFile) {
+        super(configuration, pomFile, outputFile);
         this.outputStream = new PrintStream(baos);
         this.smtpHost = smtpHost;
         this.smtpPort = smtpPort;
@@ -71,6 +71,10 @@ public class EmailReportProcessingStrategy extends HtmlReportProcessingStrategy 
 
         LOG.infof("Sending the report email to %s", toAddress);
         Transport.send(message);
+
+        PrintStream printStream = new PrintStream(outputFile);
+        printStream.println(baos);
+
         return true;
     }
 }

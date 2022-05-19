@@ -213,9 +213,15 @@ public class Cli {
                 printHelp();
                 return 10;
             }
+            String outputFile;
+            if (cmd.hasOption('o')) {
+                outputFile = cmd.getOptionValue('o');
+            } else {
+                outputFile = "report.html";
+            }
 
             UpgradeProcessingStrategy strategy = new EmailReportProcessingStrategy(configuration, pomFile,
-                    host, port, from, to, subject);
+                    host, port, from, to, subject, outputFile);
             success = performAlignment(strategy);
         } else if (GENERATE_CONFIG.equals(arguments[0])) {
             new ConfigurationGenerator().generateDefautlConfig(configurationFile, rootProjectDependencies);
