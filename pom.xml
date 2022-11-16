@@ -33,7 +33,7 @@
         <jboss.logging.version>3.4.1.Final</jboss.logging.version>
         <maven.resolver.version>1.0.3</maven.resolver.version>
         <commons.cli.version>1.4</commons.cli.version>
-        <jackson.version>2.12.3</jackson.version>
+        <jackson.version>2.12.7.1</jackson.version>
         <aether.version>1.1.0</aether.version>
         <resteasy.vetsion>4.6.0.Final</resteasy.vetsion>
     </properties>
