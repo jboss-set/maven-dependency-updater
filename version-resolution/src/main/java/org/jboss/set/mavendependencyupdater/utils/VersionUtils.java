@@ -9,8 +9,8 @@ public class VersionUtils {
     public static String DELIMITER_REGEX = "[.\\-_]";
 
     /**
-     * Do given versions belong to the same stream stream?
-     *
+     * Do given versions belong to the same stream?
+     * <p>
      * E.g.: "1.1.2" and 1.1.3" belong to the same MINOR stream, but not into the same MICRO stream.
      */
     public static boolean equalMmm(String v1, String v2, VersionStream stream) {

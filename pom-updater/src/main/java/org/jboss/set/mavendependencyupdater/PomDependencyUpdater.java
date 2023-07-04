@@ -35,7 +35,7 @@ public class PomDependencyUpdater {
 
     private static final Logger LOG = Logger.getLogger(PomDependencyUpdater.class);
 
-    public static void upgradeDependencies(File pomFile, List<DependencyEvaluator.ComponentUpgrade> componentUpgrades)
+    public static void upgradeDependencies(File pomFile, List<ComponentUpgrade> componentUpgrades)
             throws XMLStreamException, IOException, XmlPullParserException {
         StringBuilder content = PomHelper.readXmlFile(pomFile);
         Model model = new MavenXpp3Reader().read(new FileInputStream(pomFile));
@@ -44,7 +44,7 @@ public class PomDependencyUpdater {
         inputFactory.setProperty(XMLInputFactory2.P_PRESERVE_LOCATION, Boolean.TRUE);
         ModifiedPomXMLEventReader pom = new ModifiedPomXMLEventReader(content, inputFactory);
 
-        for (DependencyEvaluator.ComponentUpgrade componentUpgrade : componentUpgrades) {
+        for (ComponentUpgrade componentUpgrade : componentUpgrades) {
             ArtifactRef artifact = componentUpgrade.getArtifact();
             Optional<LocatedDependency> locatedDependencyOpt = locateDependency(pomFile, artifact);
             if (!locatedDependencyOpt.isPresent()) {

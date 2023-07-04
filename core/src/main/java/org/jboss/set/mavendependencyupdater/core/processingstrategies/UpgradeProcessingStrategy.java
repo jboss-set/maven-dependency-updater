@@ -1,6 +1,7 @@
 package org.jboss.set.mavendependencyupdater.core.processingstrategies;
 
-import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
+import org.jboss.set.mavendependencyupdater.ArtifactResult;
+import org.jboss.set.mavendependencyupdater.ComponentUpgrade;
 
 import java.util.List;
 
@@ -17,5 +18,5 @@ public interface UpgradeProcessingStrategy {
      * @param upgrades component upgrades
      * @return processed successfully?
      */
-    boolean process(List<DependencyEvaluator.ComponentUpgrade> upgrades) throws Exception;
+    boolean process(List<ArtifactResult<ComponentUpgrade>> upgrades) throws Exception;
 }

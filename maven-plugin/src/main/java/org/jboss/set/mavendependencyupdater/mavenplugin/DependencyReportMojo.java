@@ -2,7 +2,8 @@ package org.jboss.set.mavendependencyupdater.mavenplugin;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
-import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
+import org.jboss.set.mavendependencyupdater.ArtifactResult;
+import org.jboss.set.mavendependencyupdater.ComponentUpgrade;
 import org.jboss.set.mavendependencyupdater.core.processingstrategies.TextReportProcessingStrategy;
 
 import java.io.ByteArrayOutputStream;
@@ -18,7 +19,7 @@ public class DependencyReportMojo extends AbstractUpdaterMojo {
     private static final String REPORT_FILE = "dependency-upgrades-report.txt";
 
     @Override
-    protected void processComponentUpgrades(File pomFile, List<DependencyEvaluator.ComponentUpgrade> componentUpgrades)
+    protected void processComponentUpgrades(File pomFile, List<ArtifactResult<ComponentUpgrade>> scopedUpgrades)
             throws MojoExecutionException {
         getLog().info("Writing dependency upgrades report for project " + project.getName());
 
@@ -26,7 +27,7 @@ public class DependencyReportMojo extends AbstractUpdaterMojo {
         PrintStream ps = new PrintStream(baos);
         TextReportProcessingStrategy strategy = new TextReportProcessingStrategy(configuration, pomFile, ps);
         try {
-            strategy.process(componentUpgrades);
+            strategy.process(scopedUpgrades);
         } catch (Exception e) {
             throw new MojoExecutionException("Error when processing dependencies", e);
         }

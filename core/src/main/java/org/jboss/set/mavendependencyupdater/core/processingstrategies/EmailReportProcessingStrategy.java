@@ -1,6 +1,7 @@
 package org.jboss.set.mavendependencyupdater.core.processingstrategies;
 
-import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
+import org.jboss.set.mavendependencyupdater.ArtifactResult;
+import org.jboss.set.mavendependencyupdater.ComponentUpgrade;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 
 import javax.mail.Message;
@@ -38,7 +39,7 @@ public class EmailReportProcessingStrategy extends HtmlReportProcessingStrategy 
     }
 
     @Override
-    public boolean process(List<DependencyEvaluator.ComponentUpgrade> upgrades) throws Exception {
+    public boolean process(List<ArtifactResult<ComponentUpgrade>> upgrades) throws Exception {
         super.process(upgrades);
 
         if (upgrades.size() == 0) {

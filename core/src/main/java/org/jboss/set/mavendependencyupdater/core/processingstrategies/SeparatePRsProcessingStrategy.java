@@ -4,7 +4,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.jboss.logging.Logger;
-import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
+import org.jboss.set.mavendependencyupdater.ArtifactResult;
+import org.jboss.set.mavendependencyupdater.ComponentUpgrade;
 import org.jboss.set.mavendependencyupdater.PomDependencyUpdater;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.jboss.set.mavendependencyupdater.configuration.GitConfigurationModel;
@@ -33,11 +34,11 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
             "(This pull request was automatically generated.)";
     private static final String POM_XML = "pom.xml";
 
-    private Configuration configuration;
-    private File pomFile;
-    private GitRepository gitRepository;
-    private GitHub gitHub;
-    private PatchDigestRecorder digestRecorder = new PatchDigestRecorder();
+    private final Configuration configuration;
+    private final File pomFile;
+    private final GitRepository gitRepository;
+    private final GitHub gitHub;
+    private final PatchDigestRecorder digestRecorder = new PatchDigestRecorder();
 
     public SeparatePRsProcessingStrategy(Configuration configuration, File pomFile) {
         this.configuration = configuration;
@@ -68,12 +69,14 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
     }
 
     @Override
-    public boolean process(List<DependencyEvaluator.ComponentUpgrade> upgrades) {
+    public boolean process(List<ArtifactResult<ComponentUpgrade>> upgrades) {
         boolean result = true;
 
-        for (DependencyEvaluator.ComponentUpgrade upgrade : upgrades) {
-            boolean partialResult = createPRForUpgrade(upgrade);
-            result = partialResult && result;
+        for (ArtifactResult<ComponentUpgrade> upgrade : upgrades) {
+            if (upgrade.getLatestConfigured().isPresent()) {
+                boolean partialResult = createPRForUpgrade(upgrade.getLatestConfigured().get());
+                result = partialResult && result;
+            }
         }
 
         return result;
@@ -85,7 +88,7 @@ public class SeparatePRsProcessingStrategy implements UpgradeProcessingStrategy 
      * @param componentUpgrade component upgrade
      * @return success?
      */
-    protected boolean createPRForUpgrade(DependencyEvaluator.ComponentUpgrade componentUpgrade) {
+    protected boolean createPRForUpgrade(ComponentUpgrade componentUpgrade) {
         ArtifactRef artifact = componentUpgrade.getArtifact();
         String newVersion = componentUpgrade.getNewVersion();
         String baseBranch = configuration.getGit().getBaseBranch();

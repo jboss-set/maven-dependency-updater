@@ -29,12 +29,14 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 public class DependencyEvaluator {
 
     private static final Logger LOG = Logger.getLogger(DependencyEvaluator.class);
 
     private static final VersionStreamRestriction DEFAULT_STREAM_RESTRICTION =
             new VersionStreamRestriction(VersionStream.MICRO);
+    private static final Comparator<Version> VERSION_COMPARATOR = Comparator.comparing(v -> TokenizedVersion.parse(v.toString()));
 
     private final Configuration configuration;
     private final AvailableVersionsResolver availableVersionsResolver;
@@ -53,8 +55,8 @@ public class DependencyEvaluator {
      *
      * @return returns map "G:A" => Pair[newVersion, repoUrl]
      */
-    public List<ComponentUpgrade> getVersionsToUpgrade(Collection<ScopedArtifactRef> dependencies) {
-        List<ComponentUpgrade> versionsToUpgrade = new ArrayList<>();
+    public List<ArtifactResult<ComponentUpgrade>> getVersionsToUpgrade(Collection<ScopedArtifactRef> dependencies) {
+        List<ArtifactResult<ComponentUpgrade>> versionsToUpgrade = new ArrayList<>();
         configUpToDate = true;
 
         for (ScopedArtifactRef dep : dependencies) {
@@ -75,18 +77,22 @@ public class DependencyEvaluator {
                         configuration.getRestrictionsFor(dep.getGroupId(), dep.getArtifactId());
 
                 VersionRangeResult versionRangeResult = availableVersionsResolver.resolveVersionRange(rangeArtifact);
-                Optional<Version> latest =
-                        findLatest(dep, restrictions, versionRangeResult.getVersions());
+                ArtifactResult<Version> scopedVersions = findLatest(dep, restrictions, versionRangeResult.getVersions());
 
                 LOG.debugf("Available versions for '%s': %s", dep, versionRangeResult);
-                if (latest.isPresent() && !dep.getVersionString().equals(latest.get().toString())) {
-                    String latestVersion = latest.get().toString();
-                    String repoId = versionRangeResult.getRepository(latest.get()).getId();
-                    LOG.infof("Found possible upgrade of '%s' to '%s' in repo '%s'", dep, latestVersion, repoId);
+                if (scopedVersions.anyPresent()) {
+                    ComponentUpgrade latestConfigured = null, latestMinor = null, veryLatest = null;
+                    if (versionDiffersFromCurrent(dep.getVersionString(), scopedVersions.getLatestConfigured())) {
+                        latestConfigured = upgradeInfo(scopedVersions.getLatestConfigured(), versionRangeResult, dep);
+                    }
+                    if (versionDiffersFromCurrent(dep.getVersionString(), scopedVersions.getLatestMinor())) {
+                        latestMinor = upgradeInfo(scopedVersions.getLatestMinor(), versionRangeResult, dep);
+                    }
+                    if (versionDiffersFromCurrent(dep.getVersionString(), scopedVersions.getVeryLatest())) {
+                        veryLatest = upgradeInfo(scopedVersions.getVeryLatest(), versionRangeResult, dep);
+                    }
 
-                    // check when this upgrade was first detected
-                    LocalDateTime firstSeen = findComponentUpgradeDate(dep, latestVersion);
-                    versionsToUpgrade.add(new ComponentUpgrade(dep, latestVersion, repoId, firstSeen));
+                    versionsToUpgrade.add(new ArtifactResult<>(dep, latestConfigured, latestMinor, veryLatest));
                 } else {
                     LOG.debugf("  => no change");
                 }
@@ -104,6 +110,19 @@ public class DependencyEvaluator {
         return versionsToUpgrade;
     }
 
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+    private ComponentUpgrade upgradeInfo(Optional<Version> version, VersionRangeResult versionRangeResult, ScopedArtifactRef artifactRef) {
+        if (version.isPresent()) {
+            String repoId = versionRangeResult.getRepository(version.get()).getId();
+            LOG.infof("Found possible upgrade of '%s' to '%s' in repo '%s'", artifactRef, version.get(), repoId);
+
+            // check when this upgrade was first detected
+            LocalDateTime firstSeen = findComponentUpgradeDate(artifactRef, version.get().toString());
+            return new ComponentUpgrade(artifactRef, version.get().toString(), repoId, firstSeen);
+        }
+        return null;
+    }
+
     private static Artifact toVersionRangeArtifact(ArtifactRef ref) {
         return new DefaultArtifact(ref.getGroupId(), ref.getArtifactId(), null, "[" + ref.getVersionString() + ",)");
     }
@@ -118,43 +137,71 @@ public class DependencyEvaluator {
      * @param availableVersions available versions.
      * @return latest available version in given stream.
      */
-    Optional<Version> findLatest(ScopedArtifactRef dependency,
-                                               List<Restriction> restrictions,
-                                               List<Version> availableVersions) {
+    ArtifactResult<Version> findLatest(ScopedArtifactRef dependency,
+                                       List<Restriction> restrictions,
+                                       List<Version> availableVersions) {
         if (restrictions.stream().anyMatch(r -> r instanceof NeverRestriction)) {
-            return Optional.empty(); // blacklisted component
+            return ArtifactResult.empty(dependency); // blacklisted component
         }
 
         Optional<Restriction> prefixRestrictionOptional =
                 restrictions.stream().filter(r -> r instanceof VersionPrefixRestriction).findFirst();
-        boolean restrictedPrefix = prefixRestrictionOptional.isPresent();
+        final boolean restrictedPrefix = prefixRestrictionOptional.isPresent();
         boolean restrictedStream = restrictions.stream().anyMatch(r -> r instanceof VersionStreamRestriction);
+        final String originalVersion = dependency.getVersionString();
 
         if (restrictedPrefix) {
             VersionPrefixRestriction prefixRestriction = (VersionPrefixRestriction) prefixRestrictionOptional.get();
-            if (!prefixRestriction.applies(dependency.getVersionString(), dependency.getVersionString())) {
+            if (!prefixRestriction.applies(originalVersion, originalVersion)) {
                 // configured version prefix doesn't match existing dependency => configuration needs to be updated
-                LOG.warnf("Existing dependency '%s' doesn't match configured prefix: '%s'",
+                LOG.warnf("Existing dependency '%s' doesn't match configured prefix '%s'. Configuration probably needs to be updated.",
                         dependency, prefixRestriction.getPrefixString());
                 configUpToDate = false;
-                return Optional.empty();
+                return ArtifactResult.empty(dependency);
             }
         }
 
-        Stream<Version> workingStream = availableVersions.stream();
-
-        // if neither stream nor prefix restrictions were given, use MICRO stream by default
+        // apply all configured restrictions to obtain "latest configured version"
+        Stream<Version> latestConfiguredStream = availableVersions.stream();
         if (!restrictedPrefix && !restrictedStream) {
-            workingStream = workingStream.filter(v ->
-                    DEFAULT_STREAM_RESTRICTION.applies(v.toString(), dependency.getVersionString()));
+            latestConfiguredStream = latestConfiguredStream.filter(version -> DEFAULT_STREAM_RESTRICTION.applies(version.toString(), originalVersion));
         }
-
-        // apply configured restrictions
         for (Restriction restriction : restrictions) {
-            workingStream = workingStream.filter(v -> restriction.applies(v.toString(), dependency.getVersionString()));
+            latestConfiguredStream = latestConfiguredStream.filter(version -> restriction.applies(version.toString(), originalVersion));
         }
+        Optional<Version> latestConfigured = latestConfiguredStream.max(VERSION_COMPARATOR)
+                // must not be equal to current version
+                .filter(version -> !version.toString().equals(dependency.getVersionString()));
 
-        return workingStream.max(Comparator.comparing(v -> TokenizedVersion.parse(v.toString())));
+        // remove all stream and prefix restrictions
+        List<Restriction> restrictionSubset = restrictions.stream()
+                .filter(r -> !(r instanceof VersionPrefixRestriction || r instanceof VersionStreamRestriction))
+                .collect(Collectors.toList());
+        // find latest in the same MAJOR
+        Stream<Version> latestMinorStream = availableVersions.stream();
+        for (Restriction restriction: restrictionSubset) {
+            latestMinorStream = latestMinorStream.filter(version -> restriction.applies(version.toString(), originalVersion));
+        }
+        Optional<Version> latestMinor = latestMinorStream.filter(version -> new VersionStreamRestriction(VersionStream.MINOR).applies(version.toString(), originalVersion))
+                .max(VERSION_COMPARATOR)
+                // must not be equal to current version
+                .filter(version -> !version.toString().equals(dependency.getVersionString()))
+                // must not be equal to the previous value
+                .filter(version -> !(latestConfigured.isPresent() && version.equals(latestConfigured.get())));
+
+        // find very latest version
+        Stream<Version> veryLatestStream = availableVersions.stream();
+        for (Restriction restriction: restrictionSubset) {
+            veryLatestStream = veryLatestStream.filter(version -> restriction.applies(version.toString(), originalVersion));
+        }
+        Optional<Version> veryLatest = veryLatestStream.max(VERSION_COMPARATOR)
+                // must not be equal to current version
+                .filter(version -> !version.toString().equals(dependency.getVersionString()))
+                // must not be equal to one of previous values
+                .filter(version -> !(latestConfigured.isPresent() && version.equals(latestConfigured.get()))
+                        && !(latestMinor.isPresent() && version.equals(latestMinor.get())));
+
+        return new ArtifactResult<>(dependency, latestConfigured, latestMinor, veryLatest);
     }
 
     LocalDateTime findComponentUpgradeDate(ScopedArtifactRef dep, String newVersion) {
@@ -172,13 +219,14 @@ public class DependencyEvaluator {
         return null;
     }
 
-    void sendDetectedUpgradesToExternalService(List<ComponentUpgrade> componentUpgrades) {
+    void sendDetectedUpgradesToExternalService(List<ArtifactResult<ComponentUpgrade>> componentUpgrades) {
         if (loggerClient == null) {
             LOG.info("Logger not configured. Discovered component upgrades will not be recorded.");
             return;
         }
 
-        LOG.infof("Recording %d component upgrades under project '%s'", componentUpgrades.size(), configuration.getLogger().getProjectCode());
+        String projectCode = configuration.getLogger().getProjectCode();
+        LOG.infof("Recording %d component upgrades under project '%s'", componentUpgrades.size(), projectCode);
 
         // send list of upgrades to the logger in batches, to prevent a POST request getting too large
         final int batchSize = 30;
@@ -186,9 +234,12 @@ public class DependencyEvaluator {
         do {
             final int toIndex = Math.min(componentUpgrades.size(), fromIndex + batchSize);
 
-            final List<ComponentUpgradeDTO> dtos = componentUpgrades.subList(fromIndex, toIndex).stream()
-                    .map(u -> convertToDTO(configuration.getLogger().getProjectCode(), u))
-                    .collect(Collectors.toList());
+            final List<ComponentUpgradeDTO> dtos = new ArrayList<>();
+            for (ArtifactResult<ComponentUpgrade> upgrades: componentUpgrades.subList(fromIndex, toIndex)) {
+                upgrades.getLatestConfigured().ifPresent(u -> dtos.add(convertToDTO(projectCode, u)));
+                upgrades.getLatestMinor().ifPresent(u -> dtos.add(convertToDTO(projectCode, u)));
+                upgrades.getVeryLatest().ifPresent(u -> dtos.add(convertToDTO(projectCode, u)));
+            }
 
             if (LOG.isEnabled(Logger.Level.DEBUG)) {
                 try {
@@ -211,52 +262,13 @@ public class DependencyEvaluator {
         return new ComponentUpgradeDTO(projectCode,
                 componentUpgrade.getArtifact().getGroupId(),
                 componentUpgrade.getArtifact().getArtifactId(),
-                componentUpgrade.artifact.getVersionString(),
-                componentUpgrade.newVersion,
+                componentUpgrade.getArtifact().getVersionString(),
+                componentUpgrade.getNewVersion(),
                 null);
     }
 
-    /**
-     * Data bean wrapping component upgrade information.
-     */
-    public static class ComponentUpgrade {
-
-        final private ArtifactRef artifact;
-        final private String newVersion;
-        final private String repository;
-        final private LocalDateTime firstSeen;
-
-        public ComponentUpgrade(ArtifactRef artifact, String newVersion, String repository, LocalDateTime firstSeen) {
-            this.artifact = artifact;
-            this.newVersion = newVersion;
-            this.repository = repository;
-            this.firstSeen = firstSeen;
-        }
-
-        public ComponentUpgrade(ArtifactRef artifact, String newVersion, String repository) {
-            this(artifact, newVersion, repository, null);
-        }
-
-        public ArtifactRef getArtifact() {
-            return artifact;
-        }
-
-        public String getNewVersion() {
-            return newVersion;
-        }
-
-        public String getRepository() {
-            return repository;
-        }
-
-        public LocalDateTime getFirstSeen() {
-            return firstSeen;
-        }
-
-        @Override
-        public String toString() {
-            return artifact.getGroupId() + ":" + artifact.getArtifactId() + ":" + artifact.getVersionString()
-                    + " -> " + newVersion;
-        }
+    static boolean versionDiffersFromCurrent(String current, Optional<Version> candidate) {
+        return candidate.isPresent() && !current.equals(candidate.get().toString());
     }
+
 }

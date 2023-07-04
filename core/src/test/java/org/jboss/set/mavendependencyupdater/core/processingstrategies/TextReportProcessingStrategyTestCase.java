@@ -1,7 +1,8 @@
 package org.jboss.set.mavendependencyupdater.core.processingstrategies;
 
 import org.commonjava.maven.atlas.ident.ref.SimpleArtifactRef;
-import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
+import org.jboss.set.mavendependencyupdater.ArtifactResult;
+import org.jboss.set.mavendependencyupdater.ComponentUpgrade;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.junit.Assert;
 import org.junit.Before;
@@ -43,15 +44,15 @@ public class TextReportProcessingStrategyTestCase {
 
     @Test
     public void test() throws Exception {
-        ArrayList<DependencyEvaluator.ComponentUpgrade> upgrades = new ArrayList<>();
-        upgrades.add(new DependencyEvaluator.ComponentUpgrade(SimpleArtifactRef.parse(
-                "org.jboss.logging:jboss-logging:3.4.0.Final"), "3.4.1.Final", "MRRC"));
-        upgrades.add(new DependencyEvaluator.ComponentUpgrade(SimpleArtifactRef.parse(
-                "org.jboss.logging:jboss-logging-annotations:3.4.0.Final"), "3.4.1.Final", "MRRC"));
-        upgrades.add(new DependencyEvaluator.ComponentUpgrade(SimpleArtifactRef.parse(
-                "io.undertow:undertow-core:1.0.0"), "1.0.1", "MRRC"));
-        upgrades.add(new DependencyEvaluator.ComponentUpgrade(SimpleArtifactRef.parse(
-                "io.undertow:undertow-jsp:1.0.0"), "1.0.1", "MRRC"));
+        ArrayList<ArtifactResult<ComponentUpgrade>> upgrades = new ArrayList<>();
+        upgrades.add(ArtifactResult.of(new ComponentUpgrade(SimpleArtifactRef.parse(
+                "org.jboss.logging:jboss-logging:3.4.0.Final"), "3.4.1.Final", "MRRC")));
+        upgrades.add(ArtifactResult.of(new ComponentUpgrade(SimpleArtifactRef.parse(
+                "org.jboss.logging:jboss-logging-annotations:3.4.0.Final"), "3.4.1.Final", "MRRC")));
+        upgrades.add(ArtifactResult.of(new ComponentUpgrade(SimpleArtifactRef.parse(
+                "io.undertow:undertow-core:1.0.0"), "1.0.1", "MRRC")));
+        upgrades.add(ArtifactResult.of(new ComponentUpgrade(SimpleArtifactRef.parse(
+                "io.undertow:undertow-jsp:1.0.0"), "1.0.1", "MRRC")));
         strategy.process(upgrades);
 
         String output = outputStream.toString();

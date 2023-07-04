@@ -45,7 +45,7 @@ public class PomDependencyUpdaterTestCase {
 
     @Test
     public void testUpgradeDependencies() throws IOException, XMLStreamException, XmlPullParserException {
-        List<DependencyEvaluator.ComponentUpgrade> upgrades = new ArrayList<>();
+        List<ComponentUpgrade> upgrades = new ArrayList<>();
         upgrades.add(newUpgrade(newArtifactRef("commons-cli", "commons-cli", "1.4"), "1.4.redhat-00001"));
         upgrades.add(newUpgrade(newArtifactRef("org.jboss.logging", "jboss-logging", "3.4.0"), "3.4.0.redhat-00001"));
         upgrades.add(newUpgrade(newArtifactRef("junit", "junit", "4.12"), "4.13.redhat-00001"));
@@ -137,7 +137,7 @@ public class PomDependencyUpdaterTestCase {
         Assert.assertEquals("prop3", PomDependencyUpdater.followTransitiveProperties("prop1", model));
     }
 
-    private static DependencyEvaluator.ComponentUpgrade newUpgrade(ArtifactRef artifact, String newVersion) {
-        return new DependencyEvaluator.ComponentUpgrade(artifact, newVersion, null, null);
+    private static ComponentUpgrade newUpgrade(ArtifactRef artifact, String newVersion) {
+        return new ComponentUpgrade(artifact, newVersion, null, null);
     }
 }

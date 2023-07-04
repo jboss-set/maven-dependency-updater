@@ -2,7 +2,8 @@ package org.jboss.set.mavendependencyupdater.core.processingstrategies;
 
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
 import org.jboss.logging.Logger;
-import org.jboss.set.mavendependencyupdater.DependencyEvaluator.ComponentUpgrade;
+import org.jboss.set.mavendependencyupdater.ArtifactResult;
+import org.jboss.set.mavendependencyupdater.ComponentUpgrade;
 import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.jboss.set.mavendependencyupdater.core.aggregation.ComponentUpgradeAggregator;
 
@@ -14,6 +15,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -64,7 +66,7 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
     }
 
     @Override
-    public boolean process(List<ComponentUpgrade> upgrades) throws Exception {
+    public boolean process(List<ArtifactResult<ComponentUpgrade>> upgrades) throws Exception {
         try {
             if (upgrades.size() == 0) {
                 LOG.info("No components to upgrade.");
@@ -72,10 +74,11 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
             }
             initOutputStream();
 
-            List<ComponentUpgrade> sortedUpgrades =
-                    upgrades.stream().sorted(new ComponentUpgradeComparator())
+            List<ArtifactResult<ComponentUpgrade>> sortedUpgrades =
+                    upgrades.stream().sorted(ScopedComponentUpgradedComparator.INSTANCE)
                             .collect(Collectors.toList());
-            List<ComponentUpgrade> aggregatedUpgrades = ComponentUpgradeAggregator.aggregateComponentUpgrades(pomFile, sortedUpgrades);
+            List<ArtifactResult<ComponentUpgrade>> aggregatedUpgrades =
+                    ComponentUpgradeAggregator.aggregateComponentUpgrades(pomFile, sortedUpgrades);
 
             outputStream.println("Generated at " + DATE_TIME_FORMATTER.format(ZonedDateTime.now()));
             outputStream.println();
@@ -86,15 +89,18 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
             outputStream.println();
             outputStream.println("Possible upgrades:\n");
 
-            for (ComponentUpgrade upgrade : aggregatedUpgrades) {
-                ArtifactRef artifact = upgrade.getArtifact();
-                outputStream.println(
-                        String.format("%s:%s:%s -> %s (%s) - %s",
-                                artifact.getGroupId(), artifact.getArtifactId(), artifact.getVersionString(),
-                                upgrade.getNewVersion(), upgrade.getRepository(),
-                                upgrade.getFirstSeen() == null ?
-                                        "new" : "since " + upgrade.getFirstSeen().format(DATE_FORMATTER)
-                        ));
+            for (ArtifactResult<ComponentUpgrade> scopedUpgrade : aggregatedUpgrades) {
+                Optional<ComponentUpgrade> upgradeOptional = scopedUpgrade.getAny();
+                if (upgradeOptional.isPresent()) {
+                    ComponentUpgrade upgrade = upgradeOptional.get();
+                    ArtifactRef artifact = upgrade.getArtifact();
+                    outputStream.printf("%s:%s:%s -> %s (%s) - %s%n",
+                            artifact.getGroupId(), artifact.getArtifactId(), artifact.getVersionString(),
+                            upgrade.getNewVersion(), upgrade.getRepository(),
+                            upgrade.getFirstSeen() == null ?
+                                    "new" : "since " + upgrade.getFirstSeen().format(DATE_FORMATTER)
+                    );
+                }
             }
 
             outputStream.println("\n" + aggregatedUpgrades.size() + " items");
@@ -114,6 +120,9 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
      * Comparator for sorting component upgrades. Sort primarily by first seen date, then alphabetically.
      */
     protected static class ComponentUpgradeComparator implements Comparator<ComponentUpgrade> {
+
+        static final ComponentUpgradeComparator INSTANCE = new ComponentUpgradeComparator();
+
         @Override
         public int compare(ComponentUpgrade o1, ComponentUpgrade o2) {
             // order null values first
@@ -132,6 +141,25 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
                 }
                 return res;
             }
+        }
+    }
+
+    protected static class ScopedComponentUpgradedComparator implements Comparator<ArtifactResult<ComponentUpgrade>> {
+
+        static final ScopedComponentUpgradedComparator INSTANCE = new ScopedComponentUpgradedComparator();
+
+        @Override
+        public int compare(ArtifactResult<ComponentUpgrade> s1, ArtifactResult<ComponentUpgrade> s2) {
+            Optional<ComponentUpgrade> c1 = s1.getAny();
+            Optional<ComponentUpgrade> c2 = s2.getAny();
+            if (c1.isPresent() && c2.isPresent()) {
+                return ComponentUpgradeComparator.INSTANCE.compare(c1.get(), c2.get());
+            } else if (c1.isPresent()) {
+                return -1;
+            } else if (c2.isPresent()) {
+                return 1;
+            }
+            return 0;
         }
     }
 }

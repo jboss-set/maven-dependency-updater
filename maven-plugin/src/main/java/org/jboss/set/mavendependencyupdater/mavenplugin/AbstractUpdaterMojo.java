@@ -6,7 +6,9 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.commonjava.maven.ext.common.ManipulationException;
+import org.jboss.set.mavendependencyupdater.ArtifactResult;
 import org.jboss.set.mavendependencyupdater.AvailableVersionsResolver;
+import org.jboss.set.mavendependencyupdater.ComponentUpgrade;
 import org.jboss.set.mavendependencyupdater.DefaultAvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
@@ -49,14 +51,15 @@ public abstract class AbstractUpdaterMojo extends AbstractMojo {
             AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver(configuration);
             DependencyEvaluator evaluator = new DependencyEvaluator(configuration, availableVersionsResolver, loggerClient);
 
-            List<DependencyEvaluator.ComponentUpgrade> componentUpgrades = evaluator.getVersionsToUpgrade(rootProjectDependencies);
+            List<ArtifactResult<ComponentUpgrade>> scopedUpgrades =
+                    evaluator.getVersionsToUpgrade(rootProjectDependencies);
 
-            if (componentUpgrades.size() > 0) {
+            if (scopedUpgrades.size() > 0) {
                 getLog().info("Found upgradeable dependencies for project " + project.getName() + ": ");
-                for (DependencyEvaluator.ComponentUpgrade upgrade: componentUpgrades) {
+                for (ArtifactResult<ComponentUpgrade> upgrade: scopedUpgrades) {
                     getLog().info("  " + upgrade.toString());
                 }
-                processComponentUpgrades(pomFile, componentUpgrades);
+                processComponentUpgrades(pomFile, scopedUpgrades);
             } else {
                 getLog().info("No upgradeable dependencies found for project " + project.getName());
             }
@@ -65,7 +68,7 @@ public abstract class AbstractUpdaterMojo extends AbstractMojo {
         }
     }
 
-    protected abstract void processComponentUpgrades(File pomFile, List<DependencyEvaluator.ComponentUpgrade> componentUpgrades)
+    protected abstract void processComponentUpgrades(File pomFile, List<ArtifactResult<ComponentUpgrade>> componentUpgrades)
             throws MojoExecutionException;
 
     private void initConfig() throws MojoExecutionException {

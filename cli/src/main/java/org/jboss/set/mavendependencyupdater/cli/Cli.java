@@ -11,7 +11,9 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jboss.logging.Logger;
+import org.jboss.set.mavendependencyupdater.ArtifactResult;
 import org.jboss.set.mavendependencyupdater.AvailableVersionsResolver;
+import org.jboss.set.mavendependencyupdater.ComponentUpgrade;
 import org.jboss.set.mavendependencyupdater.DefaultAvailableVersionsResolver;
 import org.jboss.set.mavendependencyupdater.DependencyEvaluator;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
@@ -283,9 +285,10 @@ public class Cli {
 
         AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver(configuration);
         DependencyEvaluator evaluator = new DependencyEvaluator(configuration, availableVersionsResolver, loggerClient);
-        List<DependencyEvaluator.ComponentUpgrade> componentUpgrades = evaluator.getVersionsToUpgrade(rootProjectDependencies);
+        List<ArtifactResult<ComponentUpgrade>> scopedUpgrades =
+                evaluator.getVersionsToUpgrade(rootProjectDependencies);
         try {
-            return strategy.process(componentUpgrades);
+            return strategy.process(scopedUpgrades);
         } catch (Exception e) {
             LOG.error("Error when processing component upgrades", e);
             return false;

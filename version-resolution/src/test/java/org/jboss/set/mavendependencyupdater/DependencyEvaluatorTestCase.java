@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static org.jboss.set.mavendependencyupdater.VersionStream.MICRO;
 import static org.jboss.set.mavendependencyupdater.VersionStream.QUALIFIER;
@@ -75,12 +74,13 @@ public class DependencyEvaluatorTestCase {
         artifactRefs.add(newScopedArtifactRef("org.apache.cxf.xjc-utils", "cxf-xjc-runtime", "3.2.3.redhat-00002", "compile"));
         artifactRefs.add(newScopedArtifactRef("junit", "junit", "4.8", "test"));
 
-        List<DependencyEvaluator.ComponentUpgrade> componentUpgrades = evaluator.getVersionsToUpgrade(artifactRefs);
+        List<ArtifactResult<ComponentUpgrade>> componentUpgrades = evaluator.getVersionsToUpgrade(artifactRefs);
 
-        Assert.assertEquals(3, componentUpgrades.size());
-        Assert.assertEquals("1.2.0", componentUpgrades.get(0).getNewVersion());
-        Assert.assertEquals("1.1.1.SP02", componentUpgrades.get(1).getNewVersion());
-        Assert.assertEquals("10.0.0.Beta2", componentUpgrades.get(2).getNewVersion());
+        Assert.assertEquals(4, componentUpgrades.size());
+        Assert.assertEquals("1.2.0", componentUpgrades.get(0).getLatestConfigured().get().getNewVersion());
+        Assert.assertEquals("1.1.1.SP02", componentUpgrades.get(1).getLatestConfigured().get().getNewVersion());
+        Assert.assertEquals("10.0.0.Beta2", componentUpgrades.get(2).getLatestConfigured().get().getNewVersion());
+        Assert.assertFalse(componentUpgrades.get(3).getLatestConfigured().isPresent());
     }
 
 
@@ -102,20 +102,19 @@ public class DependencyEvaluatorTestCase {
         List<Restriction> restrictionsMicro = Collections.singletonList(new VersionStreamRestriction(MICRO));
         List<Restriction> restrictionsQualifier = Collections.singletonList(new VersionStreamRestriction(QUALIFIER));
 
-        Optional<Version> latest = evaluator.findLatest(newDependency("1.1.1"), restrictionsMicro, availableVersions);
-        Assert.assertTrue(latest.isPresent());
-        Assert.assertEquals("1.1.4.redhat-00002", latest.get().toString());
+        ArtifactResult<Version> result = evaluator.findLatest(newDependency("1.1.1"), restrictionsMicro, availableVersions);
+        Assert.assertTrue(result.getLatestConfigured().isPresent());
+        Assert.assertEquals("1.1.4.redhat-00002", result.getLatestConfigured().get().toString());
 
-        latest = evaluator.findLatest(newDependency("1.1.1"), restrictionsQualifier, availableVersions);
-        Assert.assertTrue(latest.isPresent());
-        Assert.assertEquals("1.1.1.SP02", latest.get().toString());
+        result = evaluator.findLatest(newDependency("1.1.1"), restrictionsQualifier, availableVersions);
+        Assert.assertTrue(result.getLatestConfigured().isPresent());
+        Assert.assertEquals("1.1.1.SP02", result.getLatestConfigured().get().toString());
 
-        latest = evaluator.findLatest(newDependency("1.1.0"), restrictionsQualifier, availableVersions);
-        Assert.assertTrue(latest.isPresent());
-        Assert.assertEquals("1.1.0", latest.get().toString());
+        result = evaluator.findLatest(newDependency("1.1.0"), restrictionsQualifier, availableVersions);
+        Assert.assertFalse(result.getLatestConfigured().isPresent());
 
-        latest = evaluator.findLatest(newDependency("1.0.0"), restrictionsQualifier, availableVersions);
-        Assert.assertFalse(latest.isPresent());
+        result = evaluator.findLatest(newDependency("1.0.0"), restrictionsQualifier, availableVersions);
+        Assert.assertFalse(result.getLatestConfigured().isPresent());
     }
 
     @Test
@@ -130,7 +129,7 @@ public class DependencyEvaluatorTestCase {
         }));
 
         List<Version> availableVersions = new ArrayList<>();
-        Optional<Version> latest;
+        ArtifactResult<Version> latest;
 
         SimpleScopedArtifactRef dependency =
                 new SimpleScopedArtifactRef("test", "test", "1.Final", "jar", null, "compile");
@@ -138,33 +137,33 @@ public class DependencyEvaluatorTestCase {
 
         availableVersions.add(scheme.parseVersion("1.Final"));
         latest = evaluator.findLatest(dependency, restrictions, availableVersions);
-        Assert.assertTrue(latest.isPresent());
-        Assert.assertEquals("1.Final", latest.get().toString());
+        Assert.assertFalse(latest.getLatestConfigured().isPresent());
+        //Assert.assertEquals("1.Final", latest.getLatestConfigured().get().toString());
 
         availableVersions.add(scheme.parseVersion("10.Final"));
         latest = evaluator.findLatest(dependency, restrictions, availableVersions);
-        Assert.assertTrue(latest.isPresent());
-        Assert.assertEquals("1.Final", latest.get().toString());
+        Assert.assertFalse(latest.getLatestConfigured().isPresent());
+//        Assert.assertEquals("1.Final", latest.getLatestConfigured().get().toString());
 
         availableVersions.add(scheme.parseVersion("1.1.Final"));
         latest = evaluator.findLatest(dependency, restrictions, availableVersions);
-        Assert.assertTrue(latest.isPresent());
-        Assert.assertEquals("1.1.Final", latest.get().toString());
+        Assert.assertTrue(latest.getLatestConfigured().isPresent());
+        Assert.assertEquals("1.1.Final", latest.getLatestConfigured().get().toString());
 
         availableVersions.add(scheme.parseVersion("1.1.Final-redhat-00001"));
         latest = evaluator.findLatest(dependency, restrictions, availableVersions);
-        Assert.assertTrue(latest.isPresent());
-        Assert.assertEquals("1.1.Final-redhat-00001", latest.get().toString());
+        Assert.assertTrue(latest.getLatestConfigured().isPresent());
+        Assert.assertEquals("1.1.Final-redhat-00001", latest.getLatestConfigured().get().toString());
 
         availableVersions.add(scheme.parseVersion("1.2"));
         latest = evaluator.findLatest(dependency, restrictions, availableVersions);
-        Assert.assertTrue(latest.isPresent());
-        Assert.assertEquals("1.1.Final-redhat-00001", latest.get().toString());
+        Assert.assertTrue(latest.getLatestConfigured().isPresent());
+        Assert.assertEquals("1.1.Final-redhat-00001", latest.getLatestConfigured().get().toString());
 
         availableVersions.add(scheme.parseVersion("1.2.Final"));
         latest = evaluator.findLatest(dependency, restrictions, availableVersions);
-        Assert.assertTrue(latest.isPresent());
-        Assert.assertEquals("1.2.Final", latest.get().toString());
+        Assert.assertTrue(latest.getLatestConfigured().isPresent());
+        Assert.assertEquals("1.2.Final", latest.getLatestConfigured().get().toString());
     }
 
     @Test
@@ -177,9 +176,9 @@ public class DependencyEvaluatorTestCase {
         availableVersions.add(scheme.parseVersion("1.0.0"));
         availableVersions.add(scheme.parseVersion("1.0.1"));
 
-        Optional<Version> latest =
+        ArtifactResult<Version> latest =
                 evaluator.findLatest(dependency, Collections.singletonList(NeverRestriction.INSTANCE), availableVersions);
-        Assert.assertFalse(latest.isPresent());
+        Assert.assertFalse(latest.getLatestConfigured().isPresent());
     }
 
     @Test
@@ -197,8 +196,8 @@ public class DependencyEvaluatorTestCase {
                 new SimpleScopedArtifactRef("test", "test", "1.0.0", "jar", null, "compile");
 
 
-        Optional<Version> latest = evaluator.findLatest(dependency, restrictions, availableVersions);
-        Assert.assertFalse(latest.isPresent());
+        ArtifactResult<Version> latest = evaluator.findLatest(dependency, restrictions, availableVersions);
+        Assert.assertFalse(latest.getLatestConfigured().isPresent());
     }
 
     @Test
@@ -215,9 +214,9 @@ public class DependencyEvaluatorTestCase {
                 new SimpleScopedArtifactRef("test", "test", "1.3.16", "jar", null, "compile");
 
 
-        Optional<Version> latest = evaluator.findLatest(dependency, Collections.emptyList(), availableVersions);
-        Assert.assertTrue(latest.isPresent());
-        Assert.assertEquals("1.3.16.SP1-redhat-6", latest.get().toString());
+        ArtifactResult<Version> latest = evaluator.findLatest(dependency, Collections.emptyList(), availableVersions);
+        Assert.assertTrue(latest.getLatestConfigured().isPresent());
+        Assert.assertEquals("1.3.16.SP1-redhat-6", latest.getLatestConfigured().get().toString());
     }
 
     @Test
@@ -251,11 +250,11 @@ public class DependencyEvaluatorTestCase {
         return new SimpleScopedArtifactRef("test", "test", version, "jar", null, "compile");
     }
 
-    private List<DependencyEvaluator.ComponentUpgrade> createComponentUpgradeInstances(int count) {
-        ArrayList<DependencyEvaluator.ComponentUpgrade> list = new ArrayList<>();
+    private List<ArtifactResult<ComponentUpgrade>> createComponentUpgradeInstances(int count) {
+        List<ArtifactResult<ComponentUpgrade>> list = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             SimpleArtifactRef ref = new SimpleArtifactRef("group", "artifact", "1", null, "compile");
-            list.add(new DependencyEvaluator.ComponentUpgrade(ref, String.valueOf(i), "repo"));
+            list.add(ArtifactResult.of(new ComponentUpgrade(ref, String.valueOf(i), "repo")));
         }
         return list;
     }
