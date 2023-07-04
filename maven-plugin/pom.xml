@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.jboss.set.dependency-alignment</groupId>
         <artifactId>maven-dependency-updater-parent</artifactId>
-        <version>0.8.3-SNAPSHOT</version>
+        <version>1.0.0</version>
     </parent>
 
     <artifactId>dependency-updater-maven-plugin</artifactId>
