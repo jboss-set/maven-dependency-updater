@@ -154,10 +154,10 @@ public class HtmlReportProcessingStrategy extends TextReportProcessingStrategy {
         ContainerTag tbody = tbody();
         tbody.with(tr().with(tableRowData(upgrade.getArtifactRef(), upgrade.getLatestConfigured(), null)));
         if (minorPresent) {
-            tbody.with(tr().with(tableRowData(upgrade.getArtifactRef(), upgrade.getLatestMinor(), "&rdsh; Minor upgrade")));
+            tbody.with(tr().with(tableRowData(upgrade.getArtifactRef(), upgrade.getLatestMinor(), "&#8627; Minor upgrade")));
         }
         if (upgrade.getVeryLatest().isPresent()) {
-            tbody.with(tr().with(tableRowData(upgrade.getArtifactRef(), upgrade.getVeryLatest(), "&rdsh; Very latest")));
+            tbody.with(tr().with(tableRowData(upgrade.getArtifactRef(), upgrade.getVeryLatest(), "&#8627; Very latest")));
         }
         return tbody;
     }
