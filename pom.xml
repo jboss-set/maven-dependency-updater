@@ -10,14 +10,14 @@
 
     <groupId>org.jboss.set.dependency-alignment</groupId>
     <artifactId>maven-dependency-updater-parent</artifactId>
-    <version>1.0.2-SNAPSHOT</version>
+    <version>1.0.2</version>
     <packaging>pom</packaging>
 
     <scm>
         <connection>scm:git:git://github.com/jboss-set/maven-dependency-updater.git</connection>
         <developerConnection>scm:git:git@github.com:jboss-set/maven-dependency-updater.git</developerConnection>
         <url>https://github.com/jboss-set/maven-dependency-updater</url>
-        <tag>HEAD</tag>
+        <tag>1.0.2</tag>
     </scm>
 
     <distributionManagement>
