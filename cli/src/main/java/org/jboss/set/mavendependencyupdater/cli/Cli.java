@@ -10,6 +10,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.commonjava.maven.ext.common.model.Project;
 import org.jboss.logging.Logger;
 import org.jboss.set.mavendependencyupdater.ArtifactResult;
 import org.jboss.set.mavendependencyupdater.AvailableVersionsResolver;
@@ -33,6 +34,7 @@ import java.io.File;
 import java.net.URI;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public class Cli {
 
@@ -53,7 +55,8 @@ public class Cli {
     final private Options options;
     final private CommandLineParser parser = new DefaultParser();
     private Configuration configuration;
-    private Collection<ScopedArtifactRef> rootProjectDependencies;
+    private Map<Project, Collection<ScopedArtifactRef>> dependenciesPerProject;
+    private Collection<ScopedArtifactRef> allProjectDependencies;
 
     public static void main(String[] args) {
         try {
@@ -154,7 +157,9 @@ public class Cli {
         }
         File pomFile = new File(cmd.getOptionValue('f'));
 
-        rootProjectDependencies = new PmeDependencyCollector(pomFile).getRootProjectDependencies();
+        PmeDependencyCollector collector = new PmeDependencyCollector(pomFile);
+        dependenciesPerProject = collector.getDependenciesPerProjects();
+        allProjectDependencies = collector.getAllProjectDependencies();
 
         boolean success;
         if (PERFORM_UPGRADES.equals(arguments[0])) {
@@ -226,12 +231,12 @@ public class Cli {
                     host, port, from, to, subject, outputFile);
             success = performAlignment(strategy);
         } else if (GENERATE_CONFIG.equals(arguments[0])) {
-            new ConfigurationGenerator().generateDefautlConfig(configurationFile, rootProjectDependencies);
+            new ConfigurationGenerator().generateDefautlConfig(configurationFile, allProjectDependencies);
             success = true;
         } else if (CHECK_CONFIG.equals(arguments[0])) {
             configuration = new Configuration(configurationFile);
             Collection<Pair<ScopedArtifactRef, String>> outOfDate =
-                    configuration.findOutOfDateRestrictions(rootProjectDependencies);
+                    configuration.findOutOfDateRestrictions(allProjectDependencies);
             outOfDate.forEach(p ->
                     System.err.printf((PREFIX_DOESNT_MATCH_MSG) + "%n", p.getLeft(), p.getRight())
             );
@@ -272,7 +277,7 @@ public class Cli {
 
     private boolean performAlignment(UpgradeProcessingStrategy strategy) {
         assert configuration != null;
-        assert rootProjectDependencies != null;
+        assert dependenciesPerProject != null;
 
         LoggerClient loggerClient = null;
         if (configuration.getLogger().isSet()) {
@@ -285,10 +290,9 @@ public class Cli {
 
         AvailableVersionsResolver availableVersionsResolver = new DefaultAvailableVersionsResolver(configuration);
         DependencyEvaluator evaluator = new DependencyEvaluator(configuration, availableVersionsResolver, loggerClient);
-        List<ArtifactResult<ComponentUpgrade>> scopedUpgrades =
-                evaluator.getVersionsToUpgrade(rootProjectDependencies);
+        List<ArtifactResult<ComponentUpgrade>> versionsToUpgrade = evaluator.getVersionsToUpgrade(dependenciesPerProject);
         try {
-            return strategy.process(scopedUpgrades);
+            return strategy.process(versionsToUpgrade);
         } catch (Exception e) {
             LOG.error("Error when processing component upgrades", e);
             return false;

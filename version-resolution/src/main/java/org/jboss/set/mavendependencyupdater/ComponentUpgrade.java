@@ -1,6 +1,7 @@
 package org.jboss.set.mavendependencyupdater;
 
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
+import org.commonjava.maven.ext.common.model.Project;
 
 import java.time.LocalDateTime;
 
@@ -13,16 +14,18 @@ public class ComponentUpgrade {
     final private String newVersion;
     final private String repository;
     final private LocalDateTime firstSeen;
+    final private Project project;
 
-    public ComponentUpgrade(ArtifactRef artifact, String newVersion, String repository, LocalDateTime firstSeen) {
+    public ComponentUpgrade(ArtifactRef artifact, String newVersion, String repository, LocalDateTime firstSeen, Project project) {
         this.artifact = artifact;
         this.newVersion = newVersion;
         this.repository = repository;
         this.firstSeen = firstSeen;
+        this.project = project;
     }
 
     public ComponentUpgrade(ArtifactRef artifact, String newVersion, String repository) {
-        this(artifact, newVersion, repository, null);
+        this(artifact, newVersion, repository, null, null);
     }
 
     public ArtifactRef getArtifact() {
@@ -39,6 +42,10 @@ public class ComponentUpgrade {
 
     public LocalDateTime getFirstSeen() {
         return firstSeen;
+    }
+
+    public Project getProject() {
+        return project;
     }
 
     @Override

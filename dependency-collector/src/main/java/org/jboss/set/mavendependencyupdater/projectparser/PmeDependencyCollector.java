@@ -51,16 +51,16 @@ public class PmeDependencyCollector {
     /**
      * List of modules this project is composed of.
      */
-    private List<Project> projects;
+    private final List<Project> projects;
 
     /**
      * Same as above, but converted to ProjectVersionRef instances.
      */
-    private List<ProjectVersionRef> projectRefs;
+    private final List<ProjectVersionRef> projectRefs;
 
-    private Map<ProjectRef, Collection<ScopedArtifactRef>> projectsDependencies = new HashMap<>();
+    private final Map<Project, Collection<ScopedArtifactRef>> projectsDependencies = new HashMap<>();
 
-    private ProjectRef rootProjectRef;
+    private final Project rootProject;
 
     public PmeDependencyCollector(File pomFile) throws ManipulationException {
         LOG.debugf("Creating collector for project %s", pomFile);
@@ -71,30 +71,35 @@ public class PmeDependencyCollector {
                 .map(PmeDependencyCollector::toProjectVersionRef)
                 .collect(Collectors.toList());
 
-        Project rootProject = projects.stream().filter(Project::isInheritanceRoot).findFirst().get();
-        rootProjectRef = toProjectRef(rootProject);
+        rootProject = projects.stream().filter(Project::isInheritanceRoot).findFirst().get();
 
         collectProjectDependencies();
     }
 
-    public Map<ProjectRef, Collection<ScopedArtifactRef>> getAllProjectsDependencies() {
-        // TODO: unmodifiable
+    public Map<Project, Collection<ScopedArtifactRef>> getDependenciesPerProjects() {
         return projectsDependencies;
     }
 
-    public Collection<ScopedArtifactRef> getProjectDependencies(String groupId, String artifactId) {
-        // TODO: unmodifiable
-        return projectsDependencies.get(new SimpleProjectRef(groupId, artifactId));
+    public Map<ProjectRef, Collection<ScopedArtifactRef>> getDependenciesPerProjectRefs() {
+        HashMap<ProjectRef, Collection<ScopedArtifactRef>> result = new HashMap<>();
+        for (Project p: projectsDependencies.keySet()) {
+            result.put(toProjectRef(p), projectsDependencies.get(p));
+        }
+        return result;
     }
 
     public Collection<ScopedArtifactRef> getRootProjectDependencies() {
-        return projectsDependencies.get(rootProjectRef);
+        return projectsDependencies.get(rootProject);
+    }
+
+    public Collection<ScopedArtifactRef> getAllProjectDependencies() {
+        return projectsDependencies.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
     }
 
     private void collectProjectDependencies() throws ManipulationException {
         for (Project project:  projects) {
             Collection<ScopedArtifactRef> dependencies = new HashSet<>();
-            projectsDependencies.put(toProjectRef(project), dependencies);
+            projectsDependencies.put(project, dependencies);
 
             collectDependencies(dependencies, project.getResolvedManagedDependencies(session));
             collectDependencies(dependencies, project.getResolvedDependencies(session));

@@ -11,6 +11,7 @@ import org.codehaus.plexus.util.WriterFactory;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.codehaus.stax2.XMLInputFactory2;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
+import org.commonjava.maven.ext.common.model.Project;
 import org.jboss.logging.Logger;
 
 import javax.xml.stream.XMLInputFactory;
@@ -108,6 +109,46 @@ public class PomDependencyUpdater {
         return locatedDependencyOptional;
     }
 
+    /**
+     * Locates how a dependency dependency is defined, i.e. looks for dependency element for given artifact which has
+     * version defined.
+     *
+     * @param project project we are searching in
+     * @param artifact artifact to look for
+     * @return LocatedDependency instance with information about the dependency
+     */
+    public static Optional<LocatedDependency> locateDependency(Project project, ArtifactRef artifact) {
+        // function that tries to locate a dependency in given list of dependencies
+        BiFunction<LocatedDependency.Type, List<Dependency>, Optional<LocatedDependency>> dependencyLocationFn = (type, dependencies) -> {
+            Optional<Dependency> dependency =
+                    MavenUtils.findDependency(dependencies, artifact.getGroupId(), artifact.getArtifactId());
+            if (dependency.isPresent()) {
+                String version = dependency.get().getVersion();
+                if (!StringUtils.isEmpty(version)) {
+                    if (MavenUtils.isProperty(version)) {
+                        String propertyName = MavenUtils.extractPropertyName(version);
+                        propertyName = followTransitiveProperties(propertyName, project);
+                        return Optional.of(new LocatedDependency(artifact, type, propertyName, project.getPom().toURI(), null));
+                    } else {
+                        return Optional.of(new LocatedDependency(artifact, type, null, project.getPom().toURI(), null));
+                    }
+                }
+            }
+            return Optional.empty();
+        };
+
+        // search in regular dependencies
+        Optional<LocatedDependency> locatedDependencyOptional =
+                dependencyLocationFn.apply(DEPENDENCY, project.getModel().getDependencies());
+        if (!locatedDependencyOptional.isPresent()) {
+            // search in managed dependencies
+            locatedDependencyOptional =
+                    dependencyLocationFn.apply(MANAGED_DEPENDENCY, project.getModel().getDependencyManagement().getDependencies());
+        }
+
+        return locatedDependencyOptional;
+    }
+
     private static void writeFile(File outFile, StringBuilder content)
             throws IOException {
         try (Writer writer = WriterFactory.newXmlWriter(outFile)) {
@@ -119,6 +160,10 @@ public class PomDependencyUpdater {
         return followTransitiveProperties(propertyName, model, new LinkedHashSet<>());
     }
 
+    static String followTransitiveProperties(String propertyName, Project project) {
+        return followTransitiveProperties(propertyName, project, new LinkedHashSet<>());
+    }
+
     private static String followTransitiveProperties(String propertyName, Model model, Set<String> discoveredProperties) {
         if (!discoveredProperties.add(propertyName)) {
             LOG.warnf("Can't resolve property - circular property chain detected: %s, %s",
@@ -127,11 +172,39 @@ public class PomDependencyUpdater {
         }
 
         String value = model.getProperties().getProperty(propertyName);
-        if (MavenUtils.isProperty(value)) {
+        if (value == null) {
+            return propertyName;
+        } else if (MavenUtils.isProperty(value)) {
             String referencedPropertyName = MavenUtils.extractPropertyName(value);
             return followTransitiveProperties(referencedPropertyName, model, discoveredProperties);
         } else {
             return propertyName;
         }
+    }
+
+    private static String followTransitiveProperties(String propertyName, Project project, Set<String> discoveredProperties) {
+        if (!discoveredProperties.add(propertySignature(project, propertyName))) {
+            LOG.warnf("Can't resolve property - circular property chain detected: %s, %s",
+                    discoveredProperties, propertyName);
+            return discoveredProperties.iterator().next(); // circular reference, return the first property name
+        }
+
+        String value = project.getModel().getProperties().getProperty(propertyName);
+        if (value == null) {
+            if (project.getProjectParent() != null) {
+                return followTransitiveProperties(propertyName, project.getProjectParent(), discoveredProperties);
+            } else {
+                return propertyName;
+            }
+        } else if (MavenUtils.isProperty(value)) {
+            String referencedPropertyName = MavenUtils.extractPropertyName(value);
+            return followTransitiveProperties(referencedPropertyName, project, discoveredProperties);
+        } else {
+            return propertyName;
+        }
+    }
+
+    private static String propertySignature(Project project, String propertyName) {
+        return String.format("%s:%s:%s", project.getGroupId(), project.getArtifactId(), propertyName);
     }
 }

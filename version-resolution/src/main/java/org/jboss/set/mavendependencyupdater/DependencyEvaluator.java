@@ -3,6 +3,7 @@ package org.jboss.set.mavendependencyupdater;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.commonjava.maven.atlas.ident.ref.ArtifactRef;
+import org.commonjava.maven.ext.common.model.Project;
 import org.eclipse.aether.RepositoryException;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -55,7 +57,21 @@ public class DependencyEvaluator {
      *
      * @return returns map "G:A" => Pair[newVersion, repoUrl]
      */
+    public List<ArtifactResult<ComponentUpgrade>> getVersionsToUpgrade(Map<Project, Collection<ScopedArtifactRef>> dependencies) {
+        List<ArtifactResult<ComponentUpgrade>> versionsToUpgrade = new ArrayList<>();
+
+        for (Map.Entry<Project, Collection<ScopedArtifactRef>> entry: dependencies.entrySet()) {
+            versionsToUpgrade.addAll(getVersionsToUpgrade(entry.getKey(), entry.getValue()));
+        }
+
+        return versionsToUpgrade;
+    }
+
     public List<ArtifactResult<ComponentUpgrade>> getVersionsToUpgrade(Collection<ScopedArtifactRef> dependencies) {
+        return getVersionsToUpgrade(null, dependencies);
+    }
+
+    private List<ArtifactResult<ComponentUpgrade>> getVersionsToUpgrade(Project project, Collection<ScopedArtifactRef> dependencies) {
         List<ArtifactResult<ComponentUpgrade>> versionsToUpgrade = new ArrayList<>();
         configUpToDate = true;
 
@@ -83,13 +99,13 @@ public class DependencyEvaluator {
                 if (scopedVersions.anyPresent()) {
                     ComponentUpgrade latestConfigured = null, latestMinor = null, veryLatest = null;
                     if (versionDiffersFromCurrent(dep.getVersionString(), scopedVersions.getLatestConfigured())) {
-                        latestConfigured = upgradeInfo(scopedVersions.getLatestConfigured(), versionRangeResult, dep);
+                        latestConfigured = upgradeInfo(scopedVersions.getLatestConfigured(), versionRangeResult, dep, project);
                     }
                     if (versionDiffersFromCurrent(dep.getVersionString(), scopedVersions.getLatestMinor())) {
-                        latestMinor = upgradeInfo(scopedVersions.getLatestMinor(), versionRangeResult, dep);
+                        latestMinor = upgradeInfo(scopedVersions.getLatestMinor(), versionRangeResult, dep, project);
                     }
                     if (versionDiffersFromCurrent(dep.getVersionString(), scopedVersions.getVeryLatest())) {
-                        veryLatest = upgradeInfo(scopedVersions.getVeryLatest(), versionRangeResult, dep);
+                        veryLatest = upgradeInfo(scopedVersions.getVeryLatest(), versionRangeResult, dep, project);
                     }
 
                     versionsToUpgrade.add(new ArtifactResult<>(dep, latestConfigured, latestMinor, veryLatest));
@@ -111,14 +127,14 @@ public class DependencyEvaluator {
     }
 
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    private ComponentUpgrade upgradeInfo(Optional<Version> version, VersionRangeResult versionRangeResult, ScopedArtifactRef artifactRef) {
+    private ComponentUpgrade upgradeInfo(Optional<Version> version, VersionRangeResult versionRangeResult, ScopedArtifactRef artifactRef, Project project) {
         if (version.isPresent()) {
             String repoId = versionRangeResult.getRepository(version.get()).getId();
             LOG.infof("Found possible upgrade of '%s' to '%s' in repo '%s'", artifactRef, version.get(), repoId);
 
             // check when this upgrade was first detected
             LocalDateTime firstSeen = findComponentUpgradeDate(artifactRef, version.get().toString());
-            return new ComponentUpgrade(artifactRef, version.get().toString(), repoId, firstSeen);
+            return new ComponentUpgrade(artifactRef, version.get().toString(), repoId, firstSeen, project);
         }
         return null;
     }

@@ -20,7 +20,7 @@ public class PmeDependencyCollectorTestCase {
     public void testSimpleProject() throws ManipulationException, URISyntaxException {
         File pomFile = loadResource("simpleProject/pom.xml");
         Map<ProjectRef, Collection<ScopedArtifactRef>> projectsDeps =
-                new PmeDependencyCollector(pomFile).getAllProjectsDependencies();
+                new PmeDependencyCollector(pomFile).getDependenciesPerProjectRefs();
         Collection<ScopedArtifactRef> rootDeps = projectsDeps.values().iterator().next();
 
         Optional<ScopedArtifactRef> dep = findDependency(rootDeps, "pom-manipulation-common");
@@ -36,7 +36,7 @@ public class PmeDependencyCollectorTestCase {
     public void testMultiModuleProject() throws ManipulationException, URISyntaxException {
         File pomFile = loadResource("multiModuleProject/pom.xml");
         PmeDependencyCollector collector = new PmeDependencyCollector(pomFile);
-        Map<ProjectRef, Collection<ScopedArtifactRef>> projectsDeps = collector.getAllProjectsDependencies();
+        Map<ProjectRef, Collection<ScopedArtifactRef>> projectsDeps = collector.getDependenciesPerProjectRefs();
         Assert.assertEquals(3, projectsDeps.size());
 
         // root module
