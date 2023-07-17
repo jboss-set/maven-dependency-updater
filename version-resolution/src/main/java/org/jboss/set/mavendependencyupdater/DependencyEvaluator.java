@@ -230,6 +230,8 @@ public class DependencyEvaluator {
                 }
             } catch (UpgradeNotFoundException e) {
                 LOG.infof("Component upgrade to %s:%s:%s was not previously recorded", dep.getGroupId(), dep.getArtifactId(), newVersion);
+            } catch (Exception e) {
+                LOG.errorf(e, "Failed to obtain date when a component upgrade was first seen");
             }
         }
         return null;
@@ -238,6 +240,10 @@ public class DependencyEvaluator {
     void sendDetectedUpgradesToExternalService(List<ArtifactResult<ComponentUpgrade>> componentUpgrades) {
         if (loggerClient == null) {
             LOG.info("Logger not configured. Discovered component upgrades will not be recorded.");
+            return;
+        }
+        if (componentUpgrades.isEmpty()) {
+            LOG.info("No component upgrades to report.");
             return;
         }
 
@@ -268,7 +274,11 @@ public class DependencyEvaluator {
                 }
             }
 
-            loggerClient.create(dtos);
+            try {
+                loggerClient.create(dtos);
+            } catch (Exception e) {
+                LOG.errorf(e, "Failed to send discovered component upgrades to the logger service.");
+            }
 
             fromIndex += batchSize;
         } while (fromIndex < componentUpgrades.size());
