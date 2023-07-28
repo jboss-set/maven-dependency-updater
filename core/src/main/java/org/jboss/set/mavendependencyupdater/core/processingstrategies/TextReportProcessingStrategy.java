@@ -119,9 +119,9 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
     /**
      * Comparator for sorting component upgrades. Sort primarily by first seen date, then alphabetically.
      */
-    protected static class ComponentUpgradeComparator implements Comparator<ComponentUpgrade> {
+    protected static class ComponentUpgradeDiscoveredDateComparator implements Comparator<ComponentUpgrade> {
 
-        static final ComponentUpgradeComparator INSTANCE = new ComponentUpgradeComparator();
+        static final ComponentUpgradeAlphabeticalComparator INSTANCE = new ComponentUpgradeAlphabeticalComparator();
 
         @Override
         public int compare(ComponentUpgrade o1, ComponentUpgrade o2) {
@@ -144,6 +144,19 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
         }
     }
 
+    /**
+     * Comparator for sorting component upgrades. Sorts alphabetically by groupId:artifactId.
+     */
+    protected static class ComponentUpgradeAlphabeticalComparator implements Comparator<ComponentUpgrade> {
+
+        static final ComponentUpgradeAlphabeticalComparator INSTANCE = new ComponentUpgradeAlphabeticalComparator();
+
+        @Override
+        public int compare(ComponentUpgrade o1, ComponentUpgrade o2) {
+            return o1.getArtifact().compareTo(o2.getArtifact());
+        }
+    }
+
     protected static class ScopedComponentUpgradedComparator implements Comparator<ArtifactResult<ComponentUpgrade>> {
 
         static final ScopedComponentUpgradedComparator INSTANCE = new ScopedComponentUpgradedComparator();
@@ -153,7 +166,7 @@ public class TextReportProcessingStrategy implements UpgradeProcessingStrategy {
             Optional<ComponentUpgrade> c1 = s1.getAny();
             Optional<ComponentUpgrade> c2 = s2.getAny();
             if (c1.isPresent() && c2.isPresent()) {
-                return ComponentUpgradeComparator.INSTANCE.compare(c1.get(), c2.get());
+                return ComponentUpgradeAlphabeticalComparator.INSTANCE.compare(c1.get(), c2.get());
             } else if (c1.isPresent()) {
                 return -1;
             } else if (c2.isPresent()) {
