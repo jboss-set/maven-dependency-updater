@@ -11,16 +11,48 @@ upgrades to newer micro versions are reported.
 It can be also specified which maven repositories should be used to look up new dependency versions. By default
 the Maven Central repository is used.
 
-- [Usage - Maven plugin](#usage---maven-plugin)
+In the reports, discovered dependency upgrades are aggregated in a way that if multiple dependencies can be upgraded
+to the same new version, and these dependencies use the same version property, only one of these dependencies is 
+included in the report.
+
 - [Usage - CLI](#usage---cli)
   - [CLI Usage examples](#cli-usage-examples)
+- [Usage - Maven plugin](#usage---maven-plugin)
 - [Configuration](#configuration)
   - [Configuration Keys](#configuration-keys)
   - [Upgrade Rules Examples](#upgrade-rules-examples)
 - [Limitations](#limitations)
 
+## Usage - CLI
+
+```bash
+java -jar <path/to/alignment-cli.jar> <action> -f <path/to/pom.xml> [-c <path/to/configuration.json>] [-o output-file.txt]
+```
+The alignment-cli-\<version\>.jar file is generated during build in `$SOURCE_DIR/cli/target/`.
+
+The `<action>` can be one of the following values:
+- `generate-html-report`: generates a formatted HTML report,
+- `send-html-report`: same as above, but the report is also emailed via configured SMTP server,
+- `generate-report`: generates a simple text based report,
+- `perform-upgrades`: performs discovered upgrades in the project.
+
+### CLI Usage Examples
+
+Generate text report with possible dependency upgrades to an output file `report.txt`:
+
+```bash
+$ java -jar cli/target/alignment-cli-<VERSION>.jar generate-report -c path/to/configuration.json -f path/to/pom.xml -o report.txt
+```
+
+Perform possible dependency upgrades in the POM:
+
+```bash
+$ java -jar $CLI_JAR perform-upgrades -c path/to/configuration.json -f path/to/pom.xml
+```
 
 ## Usage - Maven plugin
+
+Note: the maven plugin interface is currently untested, the CLI interface is recommended.
 
 Prerequisite: add the JBoss Releases repository as a plugin repository in your Maven project:
 
@@ -73,7 +105,7 @@ mvn org.jboss.set.dependency-alignment:dependency-updater-maven-plugin:perform-u
 ```
 
 In order to make the maven commands shorter, add the group "org.jboss.set.dependency-alignment" as a plugin group in your
-`${user.home}/.m2/settings.xml`: 
+`${user.home}/.m2/settings.xml`:
 
 ```xml
   <pluginGroups>
@@ -92,30 +124,7 @@ Reports will be saved in `dependency-upgrades-report.txt` files in `target/` dir
 upgradeable dependencies are found, the report file for given module will not be generated.
 
 If you want to define upgrade rules, place `dependency-upgrade-config.json` file into your root project directory.
-See [Configuration](#configuration) section for more information about the configuration file options. 
-
-## Usage - CLI
-
-```bash
-java -jar <path/to/alignment-cli.jar> <action> -f <path/to/pom.xml> [-c <path/to/configuration.json>] [-o output-file.txt]
-```
-
-- alignment-cli-\<version\>.jar file is generated during build in `$SOURCE_DIR/cli/target/`,
-- `<action>` can be "generate-report" or "perform-upgrades".
-
-### CLI Usage Examples
-
-Generate text report with possible dependency upgrades to an output file `report.txt`:
-
-```bash
-$ java -jar cli/target/alignment-cli-0.3.jar generate-report -c path/to/configuration.json -f path/to/pom.xml -o report.txt
-```
-
-Perform possible dependency upgrades in the POM:
-
-```bash
-$ java -jar $CLI_JAR perform-upgrades -c path/to/configuration.json -f path/to/pom.xml
-```
+See [Configuration](#configuration) section for more information about the configuration file options.
 
 ## Configuration
 
