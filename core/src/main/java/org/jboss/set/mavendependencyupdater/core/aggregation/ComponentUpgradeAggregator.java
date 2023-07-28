@@ -4,6 +4,7 @@ import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.jboss.set.mavendependencyupdater.ArtifactResult;
 import org.jboss.set.mavendependencyupdater.ComponentUpgrade;
 import org.jboss.set.mavendependencyupdater.LocatedDependency;
+import org.jboss.set.mavendependencyupdater.LocatedProperty;
 import org.jboss.set.mavendependencyupdater.PomDependencyUpdater;
 
 import java.io.File;
@@ -28,11 +29,11 @@ public class ComponentUpgradeAggregator {
      */
     public static List<ArtifactResult<ComponentUpgrade>> aggregateComponentUpgrades(File rootPom, List<ArtifactResult<ComponentUpgrade>> upgrades)
             throws IOException, XmlPullParserException {
-        final Set<ModifiedProperty> modifiedProperties = new HashSet<>();
+        final Set<LocatedProperty> modifiedProperties = new HashSet<>();
         final List<ArtifactResult<ComponentUpgrade>> aggregatedUpgrades = new ArrayList<>();
 
-        for (ArtifactResult<ComponentUpgrade> scopedUpgrade: upgrades) {
-            Optional<ComponentUpgrade> componentUpgradeOptional = scopedUpgrade.getAny();
+        for (ArtifactResult<ComponentUpgrade> artifactUpgrade: upgrades) {
+            Optional<ComponentUpgrade> componentUpgradeOptional = artifactUpgrade.getAny();
             if (!componentUpgradeOptional.isPresent()) {
                 continue;
             }
@@ -42,20 +43,18 @@ public class ComponentUpgradeAggregator {
             Optional<LocatedDependency> locatedDependencyOpt;
             if (upgrade.getProject() != null) {
                 pomFile = upgrade.getProject().getPom();
-                locatedDependencyOpt = PomDependencyUpdater.locateDependency(upgrade.getProject(), scopedUpgrade.getArtifactRef());
+                locatedDependencyOpt = PomDependencyUpdater.locateDependency(upgrade.getProject(), artifactUpgrade.getArtifactRef());
             } else {
                 pomFile = rootPom;
-                locatedDependencyOpt = PomDependencyUpdater.locateDependency(pomFile, scopedUpgrade.getArtifactRef());
+                locatedDependencyOpt = PomDependencyUpdater.locateDependency(pomFile, artifactUpgrade.getArtifactRef());
             }
 
             if (locatedDependencyOpt.isPresent()) {
                 LocatedDependency locatedDependency = locatedDependencyOpt.get();
-                URI uri = pomFile != null ? pomFile.toURI() : null;
-                boolean added = modifiedProperties.add(
-                        new ModifiedProperty(uri, locatedDependency.getProfile(), locatedDependency.getVersionProperty(),
-                                upgrade.getNewVersion()));
+                LocatedProperty locatedProperty = locatedDependency.getLocatedProperty();
+                boolean added = modifiedProperties.add(locatedProperty);
                 if (added) {
-                    aggregatedUpgrades.add(scopedUpgrade);
+                    aggregatedUpgrades.add(artifactUpgrade);
                 }
             }
         }
