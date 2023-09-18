@@ -37,7 +37,7 @@
         <pme.version>3.8.3</pme.version>
         <maven.version>3.5.4</maven.version>
         <atlas.version>0.17.2</atlas.version>
-        <jgit.version>5.4.3.201909031940-r</jgit.version>
+        <jgit.version>6.6.1.202309021850-r</jgit.version>
         <jboss.logging.version>3.4.1.Final</jboss.logging.version>
         <maven.resolver.version>1.0.3</maven.resolver.version>
         <commons.cli.version>1.4</commons.cli.version>
