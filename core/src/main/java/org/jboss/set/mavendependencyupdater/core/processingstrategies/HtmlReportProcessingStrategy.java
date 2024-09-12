@@ -60,6 +60,7 @@ public class HtmlReportProcessingStrategy extends TextReportProcessingStrategy {
     private static final String REPO_LABEL_STYLES = "border-radius: 5px;" +
             "padding: 3px;";
     private static final String FOOTER_STYLES = "color: #999;";
+    private static final String BOLD = "font-weight: bold;";
 
     private static final String BG_NEW = "background-color: #fffeec;";
 
@@ -152,17 +153,17 @@ public class HtmlReportProcessingStrategy extends TextReportProcessingStrategy {
     private DomContent upgradeData(ArtifactResult<ComponentUpgrade> upgrade) {
         boolean minorPresent = upgrade.getLatestMinor().isPresent();
         ContainerTag tbody = tbody();
-        tbody.with(tr().with(tableRowData(upgrade.getArtifactRef(), upgrade.getLatestConfigured(), null)));
+        tbody.with(tr().with(tableRowData(upgrade.getArtifactRef(), upgrade.getLatestConfigured(), null, upgrade.getLatestConfigured().isPresent())));
         if (minorPresent) {
-            tbody.with(tr().with(tableRowData(upgrade.getArtifactRef(), upgrade.getLatestMinor(), "&#8627; Minor upgrade")));
+            tbody.with(tr().with(tableRowData(upgrade.getArtifactRef(), upgrade.getLatestMinor(), "&#8627; Minor upgrade", false)));
         }
         if (upgrade.getVeryLatest().isPresent()) {
-            tbody.with(tr().with(tableRowData(upgrade.getArtifactRef(), upgrade.getVeryLatest(), "&#8627; Very latest")));
+            tbody.with(tr().with(tableRowData(upgrade.getArtifactRef(), upgrade.getVeryLatest(), "&#8627; Very latest", false)));
         }
         return tbody;
     }
 
-    private DomContent tableRowData(ArtifactRef artifactRef, Optional<ComponentUpgrade> upgradeOptional, String caption) {
+    private DomContent tableRowData(ArtifactRef artifactRef, Optional<ComponentUpgrade> upgradeOptional, String caption, boolean bold) {
         boolean isNew = upgradeOptional.map(u -> u.getFirstSeen() == null && configuration.getLogger().isSet()).orElse(false);
 
         ArrayList<DomContent> cells = new ArrayList<>();
@@ -170,14 +171,14 @@ public class HtmlReportProcessingStrategy extends TextReportProcessingStrategy {
             cells.add(td(artifactRef.getGroupId()
                     + ":" + artifactRef.getArtifactId()
                     + ":" + artifactRef.getVersionString())
-                    .withStyle(TBODY_TD_STYLES + GAV_STYLES + (isNew ? BG_NEW : "")));
+                    .withStyle(TBODY_TD_STYLES + GAV_STYLES + (isNew ? BG_NEW : "") + (bold ? BOLD : "")));
         } else {
             cells.add(td(rawHtml(caption)).withStyle(TBODY_TD_STYLES + GAV_STYLES + SUBITEM_STYLES + (isNew ? BG_NEW : "")));
         }
         if (upgradeOptional.isPresent()) {
             ComponentUpgrade upgrade = upgradeOptional.get();
             cells.add(td(upgrade.getNewVersion())
-                    .withStyle(TBODY_TD_STYLES + (isNew ? BG_NEW : "")));
+                    .withStyle(TBODY_TD_STYLES + (isNew ? BG_NEW : "") + (bold ? BOLD : "")));
             cells.add(td(span(upgrade.getRepository())
                     .withStyle(REPO_LABEL_STYLES + repositoryColor(upgrade.getRepository())))
                     .withStyle(TBODY_TD_STYLES + (isNew ? BG_NEW : "")));

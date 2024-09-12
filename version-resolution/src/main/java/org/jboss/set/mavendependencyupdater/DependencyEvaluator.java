@@ -75,6 +75,8 @@ public class DependencyEvaluator {
         List<ArtifactResult<ComponentUpgrade>> versionsToUpgrade = new ArrayList<>();
         configUpToDate = true;
 
+        LOG.infof("Going through project :%s dependencies.", project != null ? project.getArtifactId() : "null");
+
         for (ScopedArtifactRef dep : dependencies) {
             Artifact rangeArtifact = toVersionRangeArtifact(dep);
 
