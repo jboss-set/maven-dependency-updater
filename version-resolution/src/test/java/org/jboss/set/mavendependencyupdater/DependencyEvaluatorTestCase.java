@@ -10,6 +10,7 @@ import org.jboss.set.mavendependencyupdater.configuration.Configuration;
 import org.jboss.set.mavendependencyupdater.loggerclient.ComponentUpgradeDTO;
 import org.jboss.set.mavendependencyupdater.loggerclient.LoggerClient;
 import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
+import org.jboss.set.mavendependencyupdater.rules.OnlyVersionStreamRestriction;
 import org.jboss.set.mavendependencyupdater.rules.QualifierRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
 import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
@@ -244,6 +245,51 @@ public class DependencyEvaluatorTestCase {
         Assert.assertEquals("29", sublists.get(0).get(29).newVersion);
         Assert.assertEquals(1, sublists.get(1).size());
         Assert.assertEquals("30", sublists.get(1).get(0).newVersion);
+    }
+
+    @Test
+    public void testStreamRestriction() throws Exception {
+        GenericVersionScheme scheme = new GenericVersionScheme();
+
+        List<Version> availableVersions = new ArrayList<>();
+        availableVersions.add(scheme.parseVersion("1.2.3"));
+        availableVersions.add(scheme.parseVersion("1.2.4"));
+        availableVersions.add(scheme.parseVersion("1.3.1"));
+        availableVersions.add(scheme.parseVersion("2.0.1"));
+
+        SimpleScopedArtifactRef dependency =
+                new SimpleScopedArtifactRef("test", "test", "1.2.0", "jar", null, "compile");
+
+        ArrayList<Restriction> restrictions = new ArrayList<>();
+        restrictions.add(new VersionStreamRestriction(MICRO));
+
+        ArtifactResult<Version> latest = evaluator.findLatest(dependency, restrictions, availableVersions);
+        Assert.assertEquals("1.2.4", latest.getLatestConfigured().get().toString());
+        Assert.assertEquals("1.3.1", latest.getLatestMinor().get().toString());
+        Assert.assertEquals("2.0.1", latest.getVeryLatest().get().toString());
+    }
+
+    @Test
+    public void testStreamOnlyRestriction() throws Exception {
+        GenericVersionScheme scheme = new GenericVersionScheme();
+
+        List<Version> availableVersions = new ArrayList<>();
+        availableVersions.add(scheme.parseVersion("1.2.3"));
+        availableVersions.add(scheme.parseVersion("1.2.4"));
+        availableVersions.add(scheme.parseVersion("1.3.1"));
+        availableVersions.add(scheme.parseVersion("2.0.1"));
+
+        SimpleScopedArtifactRef dependency =
+                new SimpleScopedArtifactRef("test", "test", "1.2.0", "jar", null, "compile");
+
+        ArrayList<Restriction> restrictions = new ArrayList<>();
+        restrictions.add(new VersionStreamRestriction(MICRO));
+        restrictions.add(new OnlyVersionStreamRestriction(MICRO));
+
+        ArtifactResult<Version> latest = evaluator.findLatest(dependency, restrictions, availableVersions);
+        Assert.assertEquals("1.2.4", latest.getLatestConfigured().get().toString());
+        Assert.assertFalse(latest.getLatestMinor().isPresent());
+        Assert.assertFalse(latest.getVeryLatest().isPresent());
     }
 
     private ScopedArtifactRef newDependency(String version) {

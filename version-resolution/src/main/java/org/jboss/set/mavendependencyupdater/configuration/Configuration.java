@@ -6,6 +6,7 @@ import org.jboss.set.mavendependencyupdater.VersionStream;
 import org.jboss.set.mavendependencyupdater.common.ident.ScopedArtifactRef;
 import org.jboss.set.mavendependencyupdater.rules.IgnoreRestriction;
 import org.jboss.set.mavendependencyupdater.rules.NeverRestriction;
+import org.jboss.set.mavendependencyupdater.rules.OnlyVersionStreamRestriction;
 import org.jboss.set.mavendependencyupdater.rules.QualifierRestriction;
 import org.jboss.set.mavendependencyupdater.rules.Restriction;
 import org.jboss.set.mavendependencyupdater.rules.VersionPrefixRestriction;
@@ -33,6 +34,7 @@ public class Configuration {
     public static final String QUALIFIER = "QUALIFIER";
     public static final String PREFIX = "PREFIX";
     public static final String STREAM = "STREAM";
+    public static final String ONLY_STREAM = "ONLY_STREAM";
     public static final String COMMENT = "COMMENT";
     public static final String NEVER = "NEVER";
     public static final String IGNORE = "IGNORE";
@@ -108,6 +110,13 @@ public class Configuration {
                                                 restrictionConfig.getClass().getName()));
                                     }
                                     addRestriction(ga, new VersionStreamRestriction(VersionStream.valueOf((String) restrictionConfig)));
+                                    break;
+                                case ONLY_STREAM:
+                                    if (!(restrictionConfig instanceof String)) {
+                                        throw new IllegalArgumentException(String.format("String expected, %s given.",
+                                                restrictionConfig.getClass().getName()));
+                                    }
+                                    addRestriction(ga, new OnlyVersionStreamRestriction(VersionStream.valueOf((String) restrictionConfig)));
                                     break;
                                 case COMMENT:
                                     // ignore

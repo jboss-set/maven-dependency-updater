@@ -193,7 +193,8 @@ public class DependencyEvaluator {
 
         // remove all stream and prefix restrictions
         List<Restriction> restrictionSubset = restrictions.stream()
-                .filter(r -> !(r instanceof VersionPrefixRestriction || r instanceof VersionStreamRestriction))
+                .filter(r -> !r.getClass().equals(VersionPrefixRestriction.class))
+                .filter(r -> !r.getClass().equals(VersionStreamRestriction.class))
                 .collect(Collectors.toList());
         // find latest in the same MAJOR
         Stream<Version> latestMinorStream = availableVersions.stream();
